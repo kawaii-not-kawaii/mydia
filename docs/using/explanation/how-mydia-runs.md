@@ -145,7 +145,7 @@ smaller copy to download" job all shell out to ffmpeg, which will use every core
 you give it for as long as it runs. When those are running they dominate your
 sizing and nothing else comes close. When they are not, Mydia is a modest
 application that runs comfortably on hardware you would otherwise describe as
-inadequate. Mydia never transcodes for playback — it does not play anything.
+inadequate. Mydia never transcodes for playback: it does not play anything.
 
 The practical consequence is that the usual sizing question ("how much RAM per
 thousand items?") is the wrong question. Mydia's baseline is small and does not
