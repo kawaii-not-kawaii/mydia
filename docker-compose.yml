@@ -1,0 +1,42 @@
+# Mydia: a self-hosted media manager.
+#
+# Mydia organises and acquires; it does not play anything. Point Plex,
+# Jellyfin, Infuse or VLC at the same library to watch.
+#
+#   1. Generate the two secrets with: openssl rand -base64 48
+#   2. Point MEDIA_ROOT at your library
+#   3. docker compose up -d, then open http://localhost:4000
+#
+# Images are linux/amd64 only. On arm64 (Raspberry Pi, Apple Silicon) build
+# locally instead: docker build -t mydia . and set image to mydia
+
+services:
+  mydia:
+    image: ghcr.io/kawaii-not-kawaii/mydia:master
+    container_name: mydia
+    environment:
+      # Required. No defaults on purpose: a shipped secret is not a secret.
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE:?run openssl rand -base64 48}"
+      GUARDIAN_SECRET_KEY: "${GUARDIAN_SECRET_KEY:?run openssl rand -base64 48}"
+
+      # Host you reach Mydia on. Used to build absolute links.
+      PHX_HOST: "${PHX_HOST:-localhost}"
+
+      # Must match the owner of ./config and your media, or imports fail on
+      # permissions rather than on anything interesting.
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
+      TZ: "${TZ:-UTC}"
+
+      # Library paths, as seen inside the container.
+      MOVIES_PATH: /media/movies
+      TV_PATH: /media/tv
+    volumes:
+      # SQLite database, generated artwork, and the self-signed cert.
+      - ./config:/config
+      # One mount for the whole library so imports can hardlink instead of
+      # copying. Splitting downloads and library across mounts forces a copy.
+      - "${MEDIA_ROOT:?set MEDIA_ROOT to your media directory}:/media"
+    ports:
+      - "${PORT:-4000}:4000"
+    restart: unless-stopped
