@@ -348,7 +348,7 @@ defmodule Mydia.Library do
 
   defp apply_analysis_success(%MediaFile{} = media_file, result, retries_remaining) do
     alias Mydia.Library.Structs.FileMetadata
-    alias Mydia.Streaming.Codec
+    alias Mydia.Library.Codec
 
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
@@ -402,7 +402,7 @@ defmodule Mydia.Library do
          now,
          retries_remaining
        ) do
-    alias Mydia.Streaming.Codec
+    alias Mydia.Library.Codec
 
     set = [
       codec: Codec.normalize_video_codec(result.codec),
@@ -565,7 +565,7 @@ defmodule Mydia.Library do
   end
 
   defp build_analysis_success_set(result, metadata, now) do
-    alias Mydia.Streaming.Codec
+    alias Mydia.Library.Codec
 
     set = [
       codec: Codec.normalize_video_codec(result.codec),

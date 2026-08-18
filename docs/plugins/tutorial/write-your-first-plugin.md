@@ -114,7 +114,7 @@ Save it as `priv/plugins/my-plugin.json` in your Mydia checkout. Mydia
 discovers every manifest under `priv/plugins/` and seeds it as a disabled,
 unapproved plugin the next time the app boots, or the next time you open the
 admin Plugins page, whichever comes first: it's the same mechanism the
-bundled webhook notifier and Simkl plugins use to register themselves, and
+bundled webhook notifier plugin uses to register itself, and
 for local development it's the natural way to get a brand-new manifest known
 to the host without a remote plugin index. See the full field reference in
 [Manifest & Settings](../reference/manifest.md) when you need more than the

@@ -182,33 +182,6 @@ defmodule Mydia.Plugins.ConformanceTest do
                Host.call(slug, "h", %{"event" => "data-list", "namespace" => "media_item"})
     end
 
-    test "the guest round-trips ensure-watched, decoding the status enum (U6)" do
-      slug = "writeguest"
-      install_with_grant!(slug, %{"surfaces:write" => ["playback:watched"]})
-      user = user_fixture()
-      {:ok, _} = Connections.connect(slug, user.id, %{access_token: "t"})
-
-      {:ok, _} =
-        Mydia.Media.create_media_item(%{
-          title: "M",
-          type: "movie",
-          year: 2024,
-          imdb_id: "ttGUEST",
-          tmdb_id: System.unique_integer([:positive])
-        })
-
-      bytes = File.read!(@fixture)
-      {:ok, _pid} = Host.start_plugin(slug, bytes, imports: HostFunctions.imports_for(slug))
-      on_exit(fn -> Host.stop_plugin(slug) end)
-
-      assert {:ok, %{"status" => "changed"}} =
-               Host.call(slug, "h", %{
-                 "event" => "ensure-watched",
-                 "user_id" => user.id,
-                 "imdb_id" => "ttGUEST"
-               })
-    end
-
     test "a guest without state:kv is denied at the host boundary (U3)" do
       slug = "kvdenied"
       install_with_grant!(slug, %{"events:subscribe" => ["media_item.added"]})

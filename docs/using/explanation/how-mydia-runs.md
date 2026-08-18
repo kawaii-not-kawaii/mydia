@@ -139,17 +139,18 @@ network, not CPU, and they are the reason database storage speed matters more
 than CPU speed for most installs. Putting the database on an SSD is the single
 highest-value hardware choice available, and it matters more than adding cores.
 
-**Transcoding is the one genuinely expensive thing, and it is optional.**
-Preparing media for the player app means running ffmpeg, which will use every
-core you give it for as long as it runs. If you transcode, transcoding dominates
-your sizing and nothing else comes close. If you do not, Mydia is a modest
+**ffmpeg is the one genuinely expensive thing, and it is optional.** Cover
+thumbnails, perceptual hashes, intro/credits fingerprinting and the "prepare a
+smaller copy to download" job all shell out to ffmpeg, which will use every core
+you give it for as long as it runs. When those are running they dominate your
+sizing and nothing else comes close. When they are not, Mydia is a modest
 application that runs comfortably on hardware you would otherwise describe as
-inadequate.
+inadequate. Mydia never transcodes for playback — it does not play anything.
 
 The practical consequence is that the usual sizing question ("how much RAM per
 thousand items?") is the wrong question. Mydia's baseline is small and does not
 grow much. What varies is whether you scan frequently, how fast your storage is,
-and whether you transcode. Size for those.
+and how much ffmpeg work you ask for. Size for those.
 
 One thing that does not vary: the library filesystem and the download
 directory want to be the same filesystem, so imports can hardlink rather than

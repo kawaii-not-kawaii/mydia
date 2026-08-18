@@ -42,13 +42,11 @@ defmodule Mydia.Plugins.HostFunctions do
   require Logger
 
   alias Mydia.Media
-  alias Mydia.Playback
   alias Mydia.Plugins
   alias Mydia.Plugins.Connections
   alias Mydia.Plugins.Error
   alias Mydia.Plugins.Kv
   alias Mydia.Plugins.Logs
-  alias Mydia.Plugins.Matcher
   alias Mydia.Plugins.Net.Gate
   alias Mydia.Plugins.Plugin
 
@@ -89,7 +87,6 @@ defmodule Mydia.Plugins.HostFunctions do
           "kv-set" => {:fn, kv_set_import(slug)},
           "kv-delete" => {:fn, kv_delete_import(slug)},
           "data-list" => {:fn, data_list_import(slug)},
-          "ensure-watched" => {:fn, ensure_watched_import(slug)},
           "connections-list" => {:fn, connections_list_import(slug)},
           "connection-request" => {:fn, connection_request_import(slug, gate_opts)}
         }
@@ -140,16 +137,6 @@ defmodule Mydia.Plugins.HostFunctions do
       typed_result(fn ->
         with {:ok, plugin} <- Plugins.get_plugin(slug) do
           data_list(plugin, req)
-        end
-      end)
-    end
-  end
-
-  defp ensure_watched_import(slug) do
-    fn target ->
-      typed_result(fn ->
-        with {:ok, plugin} <- Plugins.get_plugin(slug) do
-          ensure_watched(plugin, target)
         end
       end)
     end
@@ -561,27 +548,6 @@ defmodule Mydia.Plugins.HostFunctions do
     {:ok, %{items: items, "next-cursor": next_cursor(next)}}
   end
 
-  defp list_namespace(plugin, "playback_progress", cursor, since, limit) do
-    # Consent-scoped (R21): only users with an active connection to this plugin
-    # are visible — a non-connected user's rows are absent entirely.
-    case Connections.connected_user_ids(plugin.slug) do
-      [] ->
-        {:ok, %{items: [], "next-cursor": :none}}
-
-      user_ids ->
-        rows =
-          Playback.list_user_progress_page(user_ids,
-            after: cursor,
-            updated_since: since,
-            limit: limit + 1
-          )
-
-        {page, next} = paginate(rows, limit)
-        items = Enum.map(page, fn p -> {:"playback-progress", to_playback_progress(p)} end)
-        {:ok, %{items: items, "next-cursor": next_cursor(next)}}
-    end
-  end
-
   defp list_namespace(_plugin, other, _cursor, _since, _limit) do
     {:error, Error.new(:invalid_request, "unknown data-list namespace: #{other}")}
   end
@@ -630,117 +596,6 @@ defmodule Mydia.Plugins.HostFunctions do
 
   defp clamp_list_limit(n) when is_integer(n) and n > 0, do: min(n, @data_list_page_cap)
   defp clamp_list_limit(_), do: @data_list_page_cap
-
-  # Progress row -> the WIT playback-progress record. A movie carries the item's
-  # own external ids; an episode carries its coordinates plus the show's ids.
-  defp to_playback_progress(p) do
-    {item_type, ext, season, epnum} = progress_dimensions(p)
-
-    %{
-      "user-id": p.user_id,
-      "item-type": item_type,
-      "media-item-id": to_option(p.media_item_id),
-      "episode-id": to_option(p.episode_id),
-      "tmdb-id": to_option(ext.tmdb),
-      "tvdb-id": to_option(ext.tvdb),
-      "imdb-id": to_option(ext.imdb),
-      "season-number": to_option(season),
-      "episode-number": to_option(epnum),
-      watched: p.watched == true,
-      "last-watched-at": to_option(iso_or_nil(p.last_watched_at)),
-      "updated-at": DateTime.to_iso8601(p.updated_at)
-    }
-  end
-
-  defp progress_dimensions(%{episode_id: eid} = p) when not is_nil(eid) do
-    ep = p.episode
-    show = ep && ep.media_item
-    {"episode", external_ids(show), ep && ep.season_number, ep && ep.episode_number}
-  end
-
-  defp progress_dimensions(p) do
-    {"movie", external_ids(p.media_item), nil, nil}
-  end
-
-  defp external_ids(nil), do: %{tmdb: nil, tvdb: nil, imdb: nil}
-  defp external_ids(item), do: %{tmdb: item.tmdb_id, tvdb: item.tvdb_id, imdb: item.imdb_id}
-
-  defp iso_or_nil(nil), do: nil
-  defp iso_or_nil(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
-
-  @doc false
-  @spec ensure_watched(Plugin.t(), map()) :: {:ok, map()} | {:error, Error.t()}
-  def ensure_watched(%Plugin{} = plugin, target) do
-    with :ok <- require_surface(plugin, "playback:watched"),
-         {:ok, user_id} <- fetch_target_user(target),
-         :ok <- require_active_connection(plugin, user_id),
-         {:ok, watched_at} <- parse_watched_at(from_option(Map.get(target, :"watched-at"))) do
-      resolve_and_write(plugin, user_id, target, watched_at)
-    end
-  end
-
-  defp resolve_and_write(plugin, user_id, target, watched_at) do
-    matcher_target = %{
-      imdb: from_option(Map.get(target, :"imdb-id")),
-      tmdb: from_option(Map.get(target, :"tmdb-id")),
-      tvdb: from_option(Map.get(target, :"tvdb-id")),
-      season: from_option(Map.get(target, :"season-number")),
-      episode: from_option(Map.get(target, :"episode-number"))
-    }
-
-    case Matcher.match(matcher_target) do
-      :not_found ->
-        {:ok, %{status: :"not-found"}}
-
-      {:movie, id} ->
-        apply_watch(plugin, user_id, [media_item_id: id], watched_at)
-
-      {:episode, id} ->
-        apply_watch(plugin, user_id, [episode_id: id], watched_at)
-    end
-  end
-
-  defp apply_watch(plugin, user_id, content_id, watched_at) do
-    # Tagged plugin:<slug> so the dispatcher suppresses the echo to this plugin
-    # (R14) while existing ripple (e.g. Trakt scrobble hooks) still fires.
-    status =
-      Playback.ensure_watched(user_id, content_id,
-        origin: "plugin:#{plugin.slug}",
-        watched_at: watched_at
-      )
-
-    {:ok, %{status: ensure_status(status)}}
-  end
-
-  defp ensure_status(:already_watched), do: :"already-watched"
-  defp ensure_status(:changed), do: :changed
-
-  defp fetch_target_user(target) do
-    case Map.get(target, :"user-id") do
-      id when is_binary(id) and id != "" -> {:ok, id}
-      _ -> {:error, Error.new(:invalid_request, "ensure-watched requires a user-id")}
-    end
-  end
-
-  # Consent boundary (R21): a plugin may only write for a user who has an active
-  # connection to it.
-  defp require_active_connection(plugin, user_id) do
-    if Connections.active?(plugin.slug, user_id) do
-      :ok
-    else
-      {:error,
-       Error.new(:capability_denied, "user #{user_id} has no active connection to #{plugin.slug}")}
-    end
-  end
-
-  defp parse_watched_at(nil), do: {:ok, nil}
-
-  defp parse_watched_at(iso) when is_binary(iso) do
-    case DateTime.from_iso8601(iso) do
-      {:ok, ts, _} -> {:ok, DateTime.truncate(ts, :second)}
-      _ -> {:error, Error.new(:invalid_request, "watched-at must be an RFC3339 timestamp")}
-    end
-  end
 
   @doc false
   @spec connections_list(Plugin.t()) :: {:ok, [map()]} | {:error, Error.t()}
@@ -833,12 +688,6 @@ defmodule Mydia.Plugins.HostFunctions do
 
   defp require_data_namespace(plugin, namespace) do
     require_scoped(plugin, "data:read", namespace, "data:read namespace #{namespace}")
-  end
-
-  # surfaces:write is scoped to a value vocabulary (e.g. "playback:watched"),
-  # like data:read namespaces — a plain class grant is not enough.
-  defp require_surface(plugin, surface) do
-    require_scoped(plugin, "surfaces:write", surface, "surfaces:write #{surface}")
   end
 
   defp require_scoped(plugin, class, value, label) do

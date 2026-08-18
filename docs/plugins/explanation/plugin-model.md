@@ -55,7 +55,7 @@ canonical WIT contract `mydia:plugin@1.1.0`, living at
 It **exports** `handler.on-event`, called for each event it subscribed to,
 and optionally `handler.on-schedule`, called on a fixed interval. It
 **imports** the host's capabilities: `http-request`, `data-read`, `log`, plus
-the 1.1 additions `kv-get`/`kv-set`/`kv-delete`, `data-list`, `ensure-watched`,
+the 1.1 additions `kv-get`/`kv-set`/`kv-delete`, `data-list`,
 `connections-list`, and `connection-request`. Every import is enforced
 server-side on every call; there is no path around it.
 

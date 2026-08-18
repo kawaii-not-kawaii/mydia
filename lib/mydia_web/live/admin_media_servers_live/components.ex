@@ -119,32 +119,8 @@ defmodule MydiaWeb.AdminMediaServersLive.Components do
                   </span>
                 </div>
 
-                <%!-- Watched Sync Status --%>
-                <% sync_enabled = get_in(server.connection_settings || %{}, ["sync_watched"]) == true %>
-                <% last_sync = get_in(server.connection_settings || %{}, ["last_watched_sync_at"]) %>
-                <%= if sync_enabled do %>
-                  <div class="flex items-center gap-2 text-xs text-base-content/60">
-                    <.icon name="hero-arrow-path" class="w-3.5 h-3.5" />
-                    <span>
-                      Watched sync enabled
-                      <%= if last_sync do %>
-                        &middot; Last synced {last_sync}
-                      <% end %>
-                    </span>
-                  </div>
-                <% end %>
-
                 <%!-- Bottom Row: Actions --%>
                 <div class="flex items-center justify-end gap-1 pt-2 border-t border-base-200">
-                  <%= if sync_enabled and server.type == :plex do %>
-                    <button
-                      class="btn btn-sm btn-ghost gap-1"
-                      phx-click="sync_watched"
-                      phx-value-id={server.id}
-                    >
-                      <.icon name="hero-arrow-path" class="w-4 h-4" /> Sync Now
-                    </button>
-                  <% end %>
                   <button
                     class="btn btn-sm btn-ghost gap-1"
                     phx-click="test_media_server"
@@ -590,71 +566,6 @@ defmodule MydiaWeb.AdminMediaServersLive.Components do
                       <.icon name="hero-arrow-left" class="w-4 h-4" /> Use Sign in with Plex instead
                     </button>
                   <% end %>
-                </div>
-              </div>
-            <% end %>
-
-            <%!-- Watched Sync Section (only for Plex) --%>
-            <%= if @current_type == :plex do %>
-              <div class="card bg-base-200/50 border border-base-300">
-                <div class="card-body p-4 gap-4">
-                  <div class="flex items-center gap-2 text-sm font-medium text-base-content/70">
-                    <.icon name="hero-arrow-path" class="w-4 h-4" /> Watched Status Sync
-                  </div>
-
-                  <div class="space-y-3">
-                    <label class="label cursor-pointer justify-start gap-3">
-                      <input
-                        type="hidden"
-                        name="media_server_config[connection_settings][sync_watched]"
-                        value="false"
-                      />
-                      <input
-                        type="checkbox"
-                        name="media_server_config[connection_settings][sync_watched]"
-                        value="true"
-                        checked={
-                          get_in(
-                            Phoenix.HTML.Form.input_value(
-                              @media_server_form,
-                              :connection_settings
-                            ) || %{},
-                            ["sync_watched"]
-                          ) in [true, "true"]
-                        }
-                        class="toggle toggle-primary toggle-sm"
-                      />
-                      <div>
-                        <span class="label-text">Enable watched sync</span>
-                        <p class="text-xs text-base-content/50">
-                          Sync watched status between Mydia and this server every 30 minutes
-                        </p>
-                      </div>
-                    </label>
-
-                    <div>
-                      <label class="label">
-                        <span class="label-text text-sm">Sync Direction</span>
-                      </label>
-                      <select
-                        name="media_server_config[connection_settings][sync_watched_direction]"
-                        class="select select-bordered select-sm w-full"
-                        value={
-                          get_in(
-                            Phoenix.HTML.Form.input_value(
-                              @media_server_form,
-                              :connection_settings
-                            ) || %{},
-                            ["sync_watched_direction"]
-                          ) || "bidirectional"
-                        }
-                      >
-                        <option value="bidirectional">Bidirectional</option>
-                        <option value="import">Import only (server → Mydia)</option>
-                        <option value="export">Export only (Mydia → server)</option>
-                      </select>
-                    </div>
-                  </div>
                 </div>
               </div>
             <% end %>

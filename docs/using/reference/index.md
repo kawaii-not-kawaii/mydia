@@ -12,4 +12,4 @@ that see the [how-to guides](../how-to/index.md) or
 - [Indexers](indexers.md) - the indexer types Mydia supports and their fields
 - [Quality profiles](quality-profiles.md) - built-in profiles, presets, and every configurable field
 - [Database](database.md) - SQLite and PostgreSQL schema and version requirements
-- [API](api.md) - the HTTP and GraphQL APIs, and their current stability
+- [API](api.md) - the HTTP API, and its current stability

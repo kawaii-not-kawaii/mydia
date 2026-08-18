@@ -14,12 +14,6 @@ defmodule MydiaWeb.AdminComponents do
   attr :active_tab, :atom, required: true
 
   defp tab_nav(assigns) do
-    remote_access_enabled =
-      Application.get_env(:mydia, :features, [])
-      |> Keyword.get(:remote_access_enabled, false)
-
-    assigns = assign(assigns, :remote_access_enabled, remote_access_enabled)
-
     ~H"""
     <div role="tablist" class="tabs tabs-border mb-6">
       <.tab_link active={@active_tab == :status} to="/admin/config/status" icon="hero-chart-bar">
@@ -88,15 +82,6 @@ defmodule MydiaWeb.AdminComponents do
       >
         Path Mappings
       </.tab_link>
-      <%= if @remote_access_enabled do %>
-        <.tab_link
-          active={@active_tab == :remote_access}
-          to="/admin/config/remote-access"
-          icon="hero-signal"
-        >
-          Remote Access
-        </.tab_link>
-      <% end %>
     </div>
     """
   end

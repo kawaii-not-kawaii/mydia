@@ -1,7 +1,0 @@
-mutation RefreshMediaToken($token: String!) {
-  refreshMediaToken(token: $token) {
-    token
-    expiresAt
-    permissions
-  }
-}

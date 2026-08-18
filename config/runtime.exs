@@ -154,7 +154,7 @@ if config_env() == :prod do
   https_port = String.to_integer(System.get_env("HTTPS_PORT") || "4443")
 
   # Generate or load self-signed certificate for direct HTTPS access
-  {:ok, cert_path, key_path, _fingerprint} = Mydia.RemoteAccess.Certificates.ensure_certificate()
+  {:ok, cert_path, key_path, _fingerprint} = Mydia.SelfSignedCert.ensure_certificate()
 
   config :mydia, MydiaWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
@@ -218,17 +218,6 @@ if config_env() == :prod do
       """
 
   config :mydia, Mydia.Auth.Guardian, secret_key: guardian_secret_key
-  config :mydia, Mydia.RemoteAccess.MediaToken, secret_key: guardian_secret_key
-
-  # Relay tunnel shared secret
-  # Uses dedicated env var if provided, otherwise derives from secret_key_base
-  # for zero-configuration security
-  relay_tunnel_secret =
-    System.get_env("RELAY_TUNNEL_SECRET") ||
-      :crypto.mac(:hmac, :sha256, secret_key_base, "relay_tunnel_secret")
-      |> Base.encode64()
-
-  config :mydia, :relay_tunnel_secret, relay_tunnel_secret
 
   # Configure Logger level based on environment variable
   # Supports: debug, info, warning, error
@@ -244,13 +233,6 @@ if config_env() == :prod do
   config :logger, level: log_level
 
   # Feature flags configuration
-  playback_enabled =
-    case System.get_env("ENABLE_PLAYBACK") do
-      "true" -> true
-      "false" -> false
-      _ -> Application.get_env(:mydia, :features)[:playback_enabled] || true
-    end
-
   cardigann_enabled =
     case System.get_env("ENABLE_CARDIGANN") do
       "true" -> true
@@ -265,18 +247,9 @@ if config_env() == :prod do
       _ -> Application.get_env(:mydia, :features)[:import_lists_enabled] || false
     end
 
-  remote_access_enabled =
-    case System.get_env("ENABLE_REMOTE_ACCESS") do
-      "true" -> true
-      "false" -> false
-      _ -> Application.get_env(:mydia, :features)[:remote_access_enabled] || false
-    end
-
   config :mydia, :features,
-    playback_enabled: playback_enabled,
     cardigann_enabled: cardigann_enabled,
-    import_lists_enabled: import_lists_enabled,
-    remote_access_enabled: remote_access_enabled
+    import_lists_enabled: import_lists_enabled
 
   # Enable/disable public IP detection via external services
   # Default: true (enabled)
@@ -310,13 +283,6 @@ if config_env() == :prod do
     external_url: external_url,
     additional_direct_urls: additional_direct_urls,
     data_dir: data_dir
-
-  # Player update URL for protocol version mismatch errors
-  # This URL is sent to clients when they have an incompatible protocol version
-  # and need to update their app
-  if player_update_url = System.get_env("PLAYER_UPDATE_URL") do
-    config :mydia, :player_update_url, player_update_url
-  end
 end
 
 # Trash directory (all environments). Optional: leaving it unset trashes into a
@@ -368,7 +334,7 @@ if config_env() == :dev do
   https_port = String.to_integer(System.get_env("HTTPS_PORT") || "4443")
 
   # Generate or load self-signed certificate
-  {:ok, cert_path, key_path, _fingerprint} = Mydia.RemoteAccess.Certificates.ensure_certificate()
+  {:ok, cert_path, key_path, _fingerprint} = Mydia.SelfSignedCert.ensure_certificate()
 
   # Configure HTTPS endpoint (HTTP is already configured in dev.exs)
   config :mydia, MydiaWeb.Endpoint,
@@ -412,13 +378,6 @@ end
 
 # Feature flags configuration for dev/test (reads from environment variable)
 if config_env() in [:dev, :test] do
-  playback_enabled =
-    case System.get_env("ENABLE_PLAYBACK") do
-      "true" -> true
-      "false" -> false
-      _ -> Application.get_env(:mydia, :features)[:playback_enabled] || true
-    end
-
   cardigann_enabled =
     case System.get_env("ENABLE_CARDIGANN") do
       "true" -> true
@@ -433,44 +392,9 @@ if config_env() in [:dev, :test] do
       _ -> Application.get_env(:mydia, :features)[:import_lists_enabled] || false
     end
 
-  remote_access_enabled =
-    case System.get_env("ENABLE_REMOTE_ACCESS") do
-      "true" -> true
-      "false" -> false
-      _ -> Application.get_env(:mydia, :features)[:remote_access_enabled] || false
-    end
-
   config :mydia, :features,
-    playback_enabled: playback_enabled,
     cardigann_enabled: cardigann_enabled,
-    import_lists_enabled: import_lists_enabled,
-    remote_access_enabled: remote_access_enabled
-end
-
-# P2P bind port configuration (all environments)
-# Required for hole punching when running in Docker
-p2p_bind_port =
-  case System.get_env("P2P_BIND_PORT") do
-    nil -> nil
-    "" -> nil
-    value -> String.to_integer(value)
-  end
-
-if p2p_bind_port do
-  config :mydia, :p2p_bind_port, p2p_bind_port
-end
-
-# P2P keypair path configuration (all environments)
-# REQUIRED for persistent node identity - paired devices need this to reconnect
-p2p_keypair_path =
-  case System.get_env("P2P_KEYPAIR_PATH") do
-    nil -> nil
-    "" -> nil
-    value -> value
-  end
-
-if p2p_keypair_path do
-  config :mydia, :p2p_keypair_path, p2p_keypair_path
+    import_lists_enabled: import_lists_enabled
 end
 
 # Ueberauth OIDC configuration (all environments)

@@ -624,43 +624,6 @@ defmodule Mydia.Config.LoaderTest do
       assert config.logging.level == "debug"
     end
 
-    test "the transcode height ceiling is reachable from every layer" do
-      # This setting is the stated escape hatch for operators whose hardware
-      # cannot encode a 4K file in realtime. It shipped once as a bare key in
-      # config/config.exs, which is compile-time and baked into the release,
-      # so the only way to set it was to rebuild the image.
-      File.mkdir_p!("test/fixtures")
-
-      File.write!(@test_yaml_path, """
-      streaming:
-        max_transcode_height: 1080
-      """)
-
-      {:ok, from_yaml} = Loader.load(config_file: @test_yaml_path)
-      assert from_yaml.streaming.max_transcode_height == 1080
-
-      {:ok, _} =
-        Repo.insert(%ConfigSetting{
-          key: "streaming.max_transcode_height",
-          value: "720",
-          category: :streaming
-        })
-
-      {:ok, from_db} = Loader.load(config_file: @test_yaml_path)
-      assert from_db.streaming.max_transcode_height == 720
-
-      System.put_env("MAX_TRANSCODE_HEIGHT", "480")
-
-      {:ok, from_env} = Loader.load(config_file: @test_yaml_path)
-      assert from_env.streaming.max_transcode_height == 480
-    end
-
-    test "the transcode height ceiling defaults to no ceiling" do
-      {:ok, config} = Loader.load(config_file: "nonexistent.yml")
-
-      assert config.streaming.max_transcode_height == nil
-    end
-
     test "environment variables override database settings" do
       # Create database config
       {:ok, _} =

@@ -9,7 +9,6 @@
 #   "kv-get"           -> host::kv_get(key), returns {"found":bool,"value":...}
 #   "kv-delete"        -> host::kv_delete(key), returns {"ok":true}
 #   "data-list"        -> host::data_list(namespace,...), returns {"count":n,...}
-#   "ensure-watched"   -> host::ensure_watched(target), returns {"status":...}
 #   "connections-list" -> host::connections_list(), returns {"count":n,...}
 #   "connection-request" -> host::connection_request(id,req), returns {"status":n}
 #

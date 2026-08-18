@@ -51,18 +51,6 @@ defmodule MydiaWeb.MusicLive.Show do
     end
   end
 
-  def handle_event("play_album", _params, socket) do
-    album = socket.assigns.album
-    tracks = prepare_tracks_for_player(album.tracks, album)
-
-    if tracks != [] do
-      Phoenix.PubSub.broadcast(Mydia.PubSub, "music_player", {:play_tracks, tracks, 0})
-      {:noreply, put_flash(socket, :info, "Starting playback")}
-    else
-      {:noreply, put_flash(socket, :error, "No playable tracks found")}
-    end
-  end
-
   # Playlist events
   def handle_event(
         "add_to_playlist",
@@ -172,31 +160,6 @@ defmodule MydiaWeb.MusicLive.Show do
 
       {:error, changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
-    end
-  end
-
-  defp prepare_tracks_for_player(tracks, album) do
-    sorted_tracks = Enum.sort_by(tracks, &{&1.disc_number, &1.track_number})
-
-    Enum.map(sorted_tracks, fn track ->
-      file_id = get_file_id(track)
-
-      %{
-        "title" => track.title,
-        "artist_name" => (track.artist && track.artist.name) || album.artist.name,
-        "cover_url" => get_cover_url(album),
-        "file_id" => file_id,
-        "duration" => track.duration,
-        "url" => if(file_id, do: "/api/v1/stream/file/#{file_id}", else: nil)
-      }
-    end)
-    |> Enum.filter(&(&1["file_id"] != nil))
-  end
-
-  defp get_file_id(track) do
-    case track.music_files do
-      [file | _] -> file.id
-      _ -> nil
     end
   end
 

@@ -92,32 +92,6 @@ defmodule Mydia.Plugins.ManifestTest do
       assert msg =~ "secrets"
     end
 
-    test "accepts surfaces:write with the playback:watched vocabulary" do
-      map =
-        valid_map(%{
-          "capabilities" => %{
-            "events:subscribe" => ["media_item.added"],
-            "surfaces:write" => ["playback:watched"]
-          }
-        })
-
-      assert {:ok, %Manifest{capabilities: caps}} = Manifest.parse(map)
-      assert caps["surfaces:write"] == ["playback:watched"]
-    end
-
-    test "rejects an unknown surfaces:write surface" do
-      map =
-        valid_map(%{
-          "capabilities" => %{
-            "events:subscribe" => ["media_item.added"],
-            "surfaces:write" => ["recommended"]
-          }
-        })
-
-      assert {:error, %Error{type: :invalid_manifest, message: msg}} = Manifest.parse(map)
-      assert msg =~ "recommended"
-    end
-
     test "rejects a net:http wildcard hostname (KTD5 exact-match rule)" do
       map =
         valid_map(%{

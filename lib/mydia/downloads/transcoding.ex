@@ -165,7 +165,6 @@ defmodule Mydia.Downloads.Transcoding do
 
   def cancel_transcode_job(%TranscodeJob{} = job) do
     alias Mydia.Downloads.JobManager
-    alias Mydia.Streaming.HlsSessionSupervisor
 
     case job.type do
       "download" ->
@@ -181,18 +180,6 @@ defmodule Mydia.Downloads.Transcoding do
 
         # Cancel in JobManager
         JobManager.cancel_job(job.media_file_id, resolution_atom)
-
-      "stream" ->
-        # Stop HLS session if running
-        if job.user_id do
-          HlsSessionSupervisor.stop_session(job.media_file_id, job.user_id)
-        end
-
-      "direct" ->
-        # Stop Direct Play session if running
-        if job.user_id do
-          HlsSessionSupervisor.stop_direct_session(job.media_file_id, job.user_id)
-        end
 
       _ ->
         :ok
@@ -217,10 +204,6 @@ defmodule Mydia.Downloads.Transcoding do
       |> Repo.all()
 
     Enum.each(jobs, &cancel_transcode_job/1)
-  end
-
-  def delete_all_streaming_jobs do
-    Repo.delete_all(from j in TranscodeJob, where: j.type in ["stream", "direct"])
   end
 
   ## Private Functions

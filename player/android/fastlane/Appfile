@@ -1,5 +1,0 @@
-# Google Play Package Name
-package_name("dev.mydia.player")
-
-# Path to service account JSON (set via environment in CI)
-json_key_file(ENV["GOOGLE_PLAY_JSON_KEY_PATH"])

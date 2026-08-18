@@ -229,32 +229,6 @@ defmodule Mydia.Events.Presentation do
       icon: "hero-arrow-up-circle",
       color: "text-info",
       title: "Plugin update available"
-    },
-
-    # playback.*
-    %{
-      type: "playback.started",
-      icon: "hero-play",
-      color: "text-info",
-      title: "Playback started"
-    },
-    %{
-      type: "playback.progressed",
-      icon: "hero-forward",
-      color: "text-info",
-      title: "Playback progressed"
-    },
-    %{
-      type: "playback.paused",
-      icon: "hero-pause",
-      color: "text-info",
-      title: "Playback paused"
-    },
-    %{
-      type: "playback.finished",
-      icon: "hero-check-circle",
-      color: "text-success",
-      title: "Playback finished"
     }
   ]
 

@@ -55,8 +55,7 @@ install time. A plugin can never widen its own grant at runtime.
 |------------|---------|
 | `events:subscribe` | The event types the plugin reacts to. Required. Each must be in the catalog. |
 | `net:http` | The exact hostnames the plugin may contact. No wildcards. |
-| `data:read` | Read namespaces the plugin may query (`media_item`, `playback_progress`). Returns a curated, read-only projection. |
-| `surfaces:write` | Curated write surfaces. Value vocabulary: `playback:watched` (the `ensure-watched` host function). |
+| `data:read` | Read namespaces the plugin may query (`media_item`). Returns a curated, read-only projection. |
 | `state:kv` | A small per-plugin key/value store that survives across invocations (watermarks, cursors, dedupe sets). |
 | `users:connections` | Per-user third-party connections the host holds on the plugin's behalf. **Cross-user**: see below. |
 | `schedule:interval` | Lets the plugin run on a fixed interval via `on-schedule`. Paired with the `schedule` descriptor. |
@@ -69,21 +68,17 @@ The event catalog for `events:subscribe`:
 - `media_file.imported`
 - `download.completed`
 - `download.failed`
-- `playback.started`
-- `playback.progressed` (sampled): the host emits at most one per 5% completion bucket, so a burst of position updates yields a single event.
-- `playback.paused`: in the catalog; not yet emitted (no player pause signal).
-- `playback.finished`: the unwatched→watched edge (the 90% auto-mark, an explicit mark-watched, or a sync write).
 
-Every `playback.*` event carries an `origin` in its metadata: `player` (a real client write), `sync:<provider>` (a media-server or Trakt import), or `plugin:<slug>` (a plugin write-back). The dispatcher never delivers an event back to the plugin that originated it, so a plugin's own `ensure-watched` writes do not echo to itself.
+An event carries an `origin` in its metadata when one applies: `sync:<provider>`
+(a media-server or Trakt import) or `plugin:<slug>` (a plugin write-back). The
+dispatcher never delivers an event back to the plugin that originated it, so a
+plugin's own writes do not echo to itself.
 
-!!! warning "`users:connections` and `data:read playback_progress` are cross-user"
-    These are the platform's first cross-user capabilities. The approval line
-    states plainly that the plugin can read connected users' linked accounts and
-    watch history and mark items watched on their behalf. Access is **consent-
-    scoped**: a user is only visible to the plugin after they click *Connect* on
-    their profile. `data-list playback_progress` returns rows only for connected
-    users, and `ensure-watched` is rejected for a user without an active
-    connection.
+!!! warning "`users:connections` is cross-user"
+    This is the platform's cross-user capability. The approval line states
+    plainly that the plugin can read connected users' linked accounts. Access is
+    **consent-scoped**: a user is only visible to the plugin after they click
+    *Connect* on their profile.
 
 !!! warning "A manifest revision needs a re-approval"
     Declaring a new capability class, a new `net:http` host, or a new subscribed

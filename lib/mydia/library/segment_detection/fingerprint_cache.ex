@@ -2,8 +2,8 @@ defmodule Mydia.Library.SegmentDetection.FingerprintCache do
   @moduledoc """
   Persists computed fingerprints so a season is decoded once, not per pairing.
 
-  Storage follows the existing `sprite_blob` / `vtt_blob` / `preview_blob`
-  convention: the payload lives in `GeneratedMedia` under the `:fingerprint`
+  Storage follows the existing `cover_blob` convention: the payload lives in
+  `GeneratedMedia` under the `:fingerprint`
   content type, and `media_files.fingerprint_blob` holds its checksum. One blob
   carries both windows, keyed by segment type.
 

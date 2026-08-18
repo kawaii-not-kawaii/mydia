@@ -1,9 +1,0 @@
-mutation DownloadJobStatus($jobId: ID!) {
-  downloadJobStatus(jobId: $jobId) {
-    jobId
-    status
-    progress
-    error
-    fileSize
-  }
-}

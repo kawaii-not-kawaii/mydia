@@ -1,12 +1,11 @@
 <Layouts.app {assigns}>
   <div class="flex flex-col gap-4 max-w-6xl mx-auto" phx-window-keydown="keydown">
-    <%!-- Video player --%>
+    <%!-- Cover --%>
     <div class="w-full">
-      <.video_player
-        content_type="file"
-        content_id={@file.id}
-        known_duration={@known_duration}
-        class="aspect-video w-full rounded-lg"
+      <img
+        src={get_cover_url(@file)}
+        alt={get_display_name(@file)}
+        class="aspect-video w-full rounded-lg object-cover bg-base-300"
       />
     </div>
 
@@ -30,18 +29,6 @@
 
       <%!-- Action buttons --%>
       <div class="flex items-center gap-2">
-        <%= if video_url = get_video_url(@file) do %>
-          <a
-            href={video_url}
-            class="btn btn-ghost btn-sm"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Open in new tab"
-          >
-            <.icon name="hero-arrow-top-right-on-square" class="w-5 h-5" />
-          </a>
-        <% end %>
-
         <button
           type="button"
           class="btn btn-ghost btn-sm text-error"

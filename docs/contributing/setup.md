@@ -5,13 +5,12 @@ Set up a local development environment for Mydia.
 The local developer environment is built on [devenv.sh](https://devenv.sh) (a
 Nix-based, declarative dev environment) and auto-loaded per git worktree via
 [direnv](https://direnv.net). The daily loop (Phoenix server, `mix test`,
-`mix precommit`, Flutter codegen) runs **natively** (no Docker dev container).
+`mix precommit`) runs **natively** (no Docker dev container).
 Each worktree derives its own non-colliding ports and isolated state, so several
 worktrees can run their full stacks at once.
 
-> Docker is still used for the production image (`Dockerfile`), the player E2E
-> stack (`compose.player-e2e.yml`), and the metadata-relay deploy, but **not**
-> for day-to-day development.
+> Docker is still used for the production image (`Dockerfile`) and the
+> metadata-relay deploy, but **not** for day-to-day development.
 
 ## Prerequisites
 
@@ -36,7 +35,7 @@ git clone https://github.com/getmydia/mydia.git
 cd mydia
 
 # Authorize direnv for this worktree (one time). This builds the toolchain and
-# runs first-run setup (deps.get, asset npm install, flutter pub get). The first
+# runs first-run setup (deps.get, asset npm install). The first
 # build downloads the toolchain and can take a while.
 #
 # Shell entry deliberately does NOT touch the development database: it must not
@@ -44,7 +43,7 @@ cd mydia
 # starting Phoenix, and `./dev db.setup` does it on demand.
 direnv allow
 
-# Start the stack (Phoenix + Flutter codegen watcher)
+# Start the stack (Phoenix)
 ./dev up
 ```
 
@@ -53,8 +52,6 @@ On shell entry devenv prints this worktree's assigned URL and ports, e.g.:
 ```
 Mydia dev environment (devenv): /home/you/mydia
   Phoenix:   http://localhost:4740
-  P2P bind:  4741
-  Flutter:   dev-server port 4743
 ```
 
 Open the printed Phoenix URL (the port is derived from the worktree path, so it
@@ -152,45 +149,8 @@ Database → Tests, with a compact per-step summary.
 Pre-commit hooks are managed by devenv (`git-hooks.hooks` in `devenv.nix`) and
 installed automatically when you enter the shell. They lint Rust (cargo
 fmt/clippy against the pinned 1.96.0 toolchain), the WASM plugin guests, and
-Elixir/Dart formatting. No `nix develop` needed. devenv owns the generated
+Elixir formatting. No `nix develop` needed. devenv owns the generated
 `.pre-commit-config.yaml` (git-ignored); edit `devenv.nix` to change hooks.
-
-## Player (Flutter)
-
-```bash
-./dev flutter <args>   # Run a flutter command in player/
-./dev player setup     # Install deps + run code generation
-./dev player build     # Build + deploy web assets to priv/static/player
-./dev player icons     # Regenerate web icons from assets/*.svg (--check verifies)
-./dev player logs      # Show recent build_runner (codegen) process logs
-```
-
-Access the player at the Phoenix URL under `/player` (e.g.
-`http://localhost:4740/player`). `MydiaWeb.FlutterWatcher` rebuilds the web app
-on source changes; the `flutter-codegen` process runs `build_runner watch` for
-GraphQL/Riverpod codegen.
-
-Android builds use the player's own Nix flake (not devenv):
-
-```bash
-./dev player android build   # Build release APK
-./dev player android shell   # nix develop shell in player/
-```
-
-macOS app builds use the host toolchain (not devenv, not the flake): Xcode and
-CocoaPods are Apple-licensed SDKs Nix cannot provide, and cargokit builds the
-Rust p2p core via `rustup`:
-
-```bash
-./dev player macos run                  # Debug build + run, hot reload
-./dev player macos build                # Release build
-./dev player macos run --skip-codegen   # Reuse existing build_runner output
-```
-
-Requires **full Xcode** (the Command Line Tools alone cannot build app bundles),
-CocoaPods (`pod`), Flutter, and rustup on the host; `./dev` preflights all four
-and tells you how to fix whichever is missing. Release output lands in
-`player/build/macos/Build/Products/Release/Mydia Player.app`.
 
 ## Project Structure
 

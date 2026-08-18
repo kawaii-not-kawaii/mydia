@@ -1,3 +1,0 @@
-mutation EndStreamingSession($sessionId: String!) {
-  endStreamingSession(sessionId: $sessionId)
-}

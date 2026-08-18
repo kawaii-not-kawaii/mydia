@@ -123,16 +123,17 @@ defmodule Mydia.Plugins.DispatcherTest do
 
   test "R14: an event is not delivered back to the plugin that originated it" do
     start_dispatcher!(self())
-    register!("simkl_sync", ["playback.finished"])
-    register!("other", ["playback.finished"])
+    register!("simkl_sync", ["download.completed"])
+    register!("other", ["download.completed"])
 
     PubSub.broadcast(
       Mydia.PubSub,
       "events:all",
-      {:event_created, %{type: "playback.finished", metadata: %{"origin" => "plugin:simkl_sync"}}}
+      {:event_created,
+       %{type: "download.completed", metadata: %{"origin" => "plugin:simkl_sync"}}}
     )
 
-    assert_receive {:invoked, "other", "playback.finished"}, 1_000
+    assert_receive {:invoked, "other", "download.completed"}, 1_000
     refute_receive {:invoked, "simkl_sync", _}, 200
   end
 
@@ -152,12 +153,12 @@ defmodule Mydia.Plugins.DispatcherTest do
 
     on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
 
-    register!("plex_watch", ["playback.finished"])
+    register!("plex_watch", ["download.completed"])
 
     PubSub.broadcast(
       Mydia.PubSub,
       "events:all",
-      {:event_created, %{type: "playback.finished", metadata: %{"origin" => "sync:plex"}}}
+      {:event_created, %{type: "download.completed", metadata: %{"origin" => "sync:plex"}}}
     )
 
     assert_receive {:got, "plex_watch", "sync:plex"}, 1_000

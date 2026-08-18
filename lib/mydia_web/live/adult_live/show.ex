@@ -1,30 +1,23 @@
 defmodule MydiaWeb.AdultLive.Show do
   @moduledoc """
-  LiveView for viewing individual adult media files with video player and metadata.
+  LiveView for viewing individual adult media files and their metadata.
   """
 
   use MydiaWeb, :live_view
 
   alias Mydia.Library
-  alias Mydia.Library.{MediaFile, ThumbnailGenerator}
-  alias Mydia.Library.Structs.FileMetadata
-
-  require Logger
+  alias Mydia.Library.GeneratedMedia
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     file = Library.get_media_file!(id, preload: [:library_path])
     {prev_file, next_file} = Library.get_adjacent_media_files(id, library_path_type: :adult)
 
-    # Get known duration from file metadata, or probe fresh if missing
-    known_duration = get_known_duration(file)
-
     {:ok,
      socket
      |> assign(:file, file)
      |> assign(:prev_file, prev_file)
      |> assign(:next_file, next_file)
-     |> assign(:known_duration, known_duration)
      |> assign(:page_title, get_display_name(file))}
   end
 
@@ -75,8 +68,12 @@ defmodule MydiaWeb.AdultLive.Show do
     end
   end
 
-  defp get_video_url(file) do
-    "/api/v1/stream/#{file.id}"
+  defp get_cover_url(file) do
+    if file.cover_blob do
+      GeneratedMedia.url_path(:cover, file.cover_blob)
+    else
+      "/images/no-poster.svg"
+    end
   end
 
   defp format_file_size(nil), do: "-"
@@ -94,54 +91,5 @@ defmodule MydiaWeb.AdultLive.Show do
 
   defp format_date(%DateTime{} = date) do
     Calendar.strftime(date, "%Y-%m-%d %H:%M")
-  end
-
-  # Extract known duration from media file metadata, or probe fresh if missing
-  defp get_known_duration(file) do
-    case file.metadata do
-      %{"duration" => duration} when is_number(duration) and duration > 0 ->
-        duration
-
-      _ ->
-        # Duration not in metadata - probe fresh from the file
-        probe_duration(file)
-    end
-  end
-
-  # Probe duration directly from the video file using FFprobe
-  defp probe_duration(file) do
-    case MediaFile.absolute_path(file) do
-      nil ->
-        Logger.warning("Cannot probe duration: library_path not loaded for media_file #{file.id}")
-        nil
-
-      absolute_path ->
-        if File.exists?(absolute_path) do
-          case ThumbnailGenerator.get_duration(absolute_path) do
-            {:ok, duration} when duration > 0 ->
-              Logger.info("Probed fresh duration #{duration}s for media_file #{file.id}")
-
-              # Update the database in the background for future requests
-              spawn(fn ->
-                updated_metadata =
-                  %{(file.metadata || FileMetadata.empty()) | duration: duration}
-
-                Library.update_media_file_scan(file, %{metadata: updated_metadata})
-              end)
-
-              duration
-
-            {:ok, _} ->
-              nil
-
-            {:error, reason} ->
-              Logger.warning("Failed to probe duration for #{absolute_path}: #{inspect(reason)}")
-              nil
-          end
-        else
-          Logger.warning("Cannot probe duration: file not found at #{absolute_path}")
-          nil
-        end
-    end
   end
 end

@@ -16,16 +16,16 @@ concurrency:
 
 env:
   MIX_ENV: test
-  # Harden Rust crate fetches against transient crates.io flakiness. The Rustler
-  # NIF (native/mydia_p2p) is built during `mix compile`; CI intermittently hit
-  # "download of … failed / curl failed / [16] Error in the HTTP2 framing layer".
+  # Harden Rust crate fetches against transient crates.io flakiness. The WASM
+  # plugin guests under plugins/ are built during `mix compile`; CI intermittently
+  # hit "download of … failed / curl failed / [16] Error in the HTTP2 framing layer".
   # Forcing HTTP/1.1 (no multiplexing) sidesteps that libcurl HTTP/2 bug and a
   # generous retry count rides out brief network blips. Inherited into the
   # `devenv shell` subshells below (cargo reads these from the environment).
   CARGO_HTTP_MULTIPLEXING: "false"
   CARGO_NET_RETRY: "10"
 
-# The three Elixir jobs below run their steps inside a single `devenv shell --
+# The Elixir jobs below run their steps inside a single `devenv shell --
 # bash` heredoc so the environment evaluates once and `_build` stays warm across
 # steps (mirrors `./dev mix precommit`, dev:159-211). The toolchain (Elixir, OTP,
 # Rust + wasm32-wasip2, Node, ffmpeg, chromium/chromedriver) comes from
@@ -120,13 +120,6 @@ jobs:
             echo "::error::devenv.nix names a version literal; read it from rust-toolchain.toml"
             FAIL=1
           fi
-          # The Flatpak build installs rustup with --default-toolchain none and
-          # lets it resolve rust-toolchain.toml, so nothing under player/flatpak
-          # may name a channel.
-          if grep -rnE -- '--default-toolchain[[:space:]]+[0-9]|^[[:space:]]*channel[[:space:]]*=' player/flatpak/; then
-            echo "::error::player/flatpak pins a Rust version; rustup resolves rust-toolchain.toml on its own"
-            FAIL=1
-          fi
           exit "$FAIL"
 
       # This task runs from devenv's mydia:ecto against a database that may have
@@ -205,51 +198,6 @@ jobs:
           mix ecto.migrate
           mix test --cover
           DEVENV
-
-  rust:
-    name: Rust
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-
-      - name: Setup Cachix
-        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
-        with:
-          name: mydia
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          extraPullNames: devenv
-          skipPush: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
-
-      - name: Install devenv
-        run: nix profile install github:NixOS/nixpkgs/567a49d1913ce81ac6e9582e3553dd90a955875f#devenv
-
-      - name: Warm devenv environment
-        run: |
-          for attempt in 1 2 3; do
-            if devenv shell -- true; then exit 0; fi
-            echo "::warning::devenv shell attempt $attempt failed"
-            [ "$attempt" -lt 3 ] && sleep 15
-          done
-          echo "::error::devenv environment failed to materialize after 3 attempts"
-          exit 1
-
-      - name: Core tests
-        run: devenv shell -- cargo test --manifest-path native/mydia_p2p_core/Cargo.toml
-
-      # The browser build. `--no-default-features` drops the `host` feature,
-      # which is what makes the server role (inbound accept, HLS responses,
-      # file reads) compile out. wasm32-unknown-unknown comes from devenv.nix,
-      # so there is no target install step.
-      - name: wasm build
-        run: devenv shell -- cargo build --manifest-path native/mydia_p2p_core/Cargo.toml --target wasm32-unknown-unknown --no-default-features
 
   test-postgres:
     name: Test / PostgreSQL
@@ -344,134 +292,3 @@ jobs:
           mix ecto.migrations
           mix test --cover
           DEVENV
-
-  test-player:
-    name: Test / Player
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: player
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: player/.fvmrc
-          channel: stable
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Run code generation
-        run: flutter pub run build_runner build
-
-      - name: Run tests
-        # --concurrency=1: the default concurrency silently drops 2-4 test
-        # files while still exiting 0, so this is load-bearing, not cosmetic.
-        run: flutter test --concurrency=1
-
-      - name: Run browser tests
-        # The run above is a VM run, which skips every @TestOn('browser') file.
-        # Without this step the IndexedDB keystore has no coverage in CI at all.
-        #
-        # The files are enumerated rather than passing a bare `--platform
-        # chrome`, because that would try to run the whole suite in a browser
-        # and most of it needs dart:io. Empty means the naming convention broke,
-        # which must fail rather than silently cover nothing.
-        #
-        # No --concurrency here, unlike the VM run above: flutter parses it and
-        # then ignores it for web runs, printing a warning that reads like a
-        # mistake.
-        run: |
-          set -euo pipefail
-          files=$(git ls-files 'test/**/*_web_test.dart')
-          if [ -z "$files" ]; then
-            echo "No test/**/*_web_test.dart files matched; expected at least one." >&2
-            exit 1
-          fi
-          echo "Browser tests: $files"
-          flutter test --platform chrome $files
-
-  test-e2e:
-    name: Test / E2E Browser
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-
-      - name: Setup Cachix
-        uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1 # v16
-        with:
-          name: mydia
-          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          extraPullNames: devenv
-          skipPush: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
-
-      - name: Install devenv
-        run: nix profile install github:NixOS/nixpkgs/567a49d1913ce81ac6e9582e3553dd90a955875f#devenv
-
-      - name: Cache dependencies
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: deps
-          key: ${{ runner.os }}-deps-devenv-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-deps-devenv-
-
-      - name: Cache build
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: _build
-          key: ${{ runner.os }}-build-devenv-${{ hashFiles('**/mix.lock') }}-${{ hashFiles('lib/**/*.ex', 'test/**/*.exs') }}
-          restore-keys: |
-            ${{ runner.os }}-build-devenv-${{ hashFiles('**/mix.lock') }}-
-
-      # See the `test` job for why the environment is warmed (with retry) before
-      # the test step — guards against transient Nix substitution failures (this
-      # job hit the libopus "path is not valid" flake most often).
-      - name: Warm devenv environment
-        run: |
-          for attempt in 1 2 3; do
-            if devenv shell -- true; then exit 0; fi
-            echo "::warning::devenv shell attempt $attempt failed"
-            [ "$attempt" -lt 3 ] && sleep 15
-          done
-          echo "::error::devenv environment failed to materialize after 3 attempts"
-          exit 1
-
-      # chromium + chromedriver come from devenv (devenv.nix sets CHROME_PATH /
-      # CHROMEDRIVER_PATH); run-feature-tests.sh finds chromium on PATH and honors
-      # CHROMEDRIVER_PATH, so no separate Chrome action is needed.
-      - name: Feature tests (E2E) under devenv
-        run: |
-          devenv shell -- bash <<'DEVENV'
-          set -euo pipefail
-          export MIX_ENV=test
-          mix local.hex --force --if-missing
-          mix local.rebar --force --if-missing
-          mix deps.get
-          mix compile
-          npm ci --prefix assets
-          mix assets.deploy
-          ./scripts/run-feature-tests.sh
-          DEVENV
-
-      - name: Upload screenshots on failure
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: wallaby-screenshots
-          path: tmp/wallaby_screenshots/
-          retention-days: 7

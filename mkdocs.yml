@@ -103,8 +103,6 @@ nav:
           - using/how-to/update-mydia.md
           - using/how-to/monitor-and-logs.md
           - using/how-to/nixos.md
-          - using/how-to/install-player-linux.md
-          - using/how-to/remote-access.md
       - Reference:
           - using/reference/index.md
           - using/reference/environment-variables.md
@@ -120,7 +118,6 @@ nav:
           - using/explanation/configuration-model.md
           - using/explanation/media-pipeline.md
           - using/explanation/quality-decisions.md
-          - using/explanation/remote-access.md
           - using/explanation/how-mydia-runs.md
           - using/explanation/vs-radarr-sonarr.md
   - Configuration:
@@ -132,7 +129,6 @@ nav:
       - How-to guides:
           - plugins/how-to/notifications.md
           - plugins/how-to/media-data.md
-          - plugins/how-to/two-way-sync.md
           - plugins/how-to/test-and-iterate.md
       - Reference:
           - plugins/reference/manifest.md
@@ -144,7 +140,6 @@ nav:
       - contributing/testing.md
       - contributing/e2e-testing.md
       - contributing/architecture.md
-      - contributing/ci-artifacts.md
       - contributing/releasing.md
 
 extra:

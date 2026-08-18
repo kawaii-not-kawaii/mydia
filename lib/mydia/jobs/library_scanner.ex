@@ -465,10 +465,7 @@ defmodule Mydia.Jobs.LibraryScanner do
         total: length(files_needing_thumbnails)
       )
 
-      Mydia.Jobs.ThumbnailGeneration.enqueue_batch(files_needing_thumbnails,
-        include_sprites: true,
-        include_previews: true
-      )
+      Mydia.Jobs.ThumbnailGeneration.enqueue_batch(files_needing_thumbnails)
     end
 
     # Update library path with success status

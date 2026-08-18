@@ -155,16 +155,6 @@ defmodule MydiaWeb.CollectionLive.Show do
             <span class="text-base-content/60">
               {@item_count} {if @item_count == 1, do: "item", else: "items"}
             </span>
-            <%!-- Play All button --%>
-            <%= if @item_count > 0 do %>
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm gap-1"
-                phx-click="play_all"
-              >
-                <.icon name="hero-play" class="w-4 h-4" /> Play All
-              </button>
-            <% end %>
             <%!-- Manual collection: Add Items button --%>
             <%= if @collection.type == "manual" and can_edit?(@collection, @current_user) do %>
               <button
@@ -579,8 +569,6 @@ defmodule MydiaWeb.CollectionLive.Show do
     """
   end
 
-  alias MydiaWeb.MediaLive.Show.Helpers, as: PlayerHelpers
-
   @impl true
   def handle_event("load_more", _params, socket) do
     if socket.assigns.has_more do
@@ -590,23 +578,6 @@ defmodule MydiaWeb.CollectionLive.Show do
        |> load_items(reset: false)}
     else
       {:noreply, socket}
-    end
-  end
-
-  def handle_event("play_all", _params, socket) do
-    collection = socket.assigns.collection
-
-    # Get all playable items from the collection
-    playable_items = Collections.get_playable_items(collection)
-
-    case playable_items do
-      [] ->
-        {:noreply, put_flash(socket, :error, "No playable items in this collection")}
-
-      items ->
-        # Build the queue player URL
-        queue_url = PlayerHelpers.flutter_queue_player_url(items)
-        {:noreply, redirect(socket, external: queue_url)}
     end
   end
 

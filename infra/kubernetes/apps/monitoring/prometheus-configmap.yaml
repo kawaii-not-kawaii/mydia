@@ -13,13 +13,6 @@ data:
       evaluation_interval: 30s
 
     scrape_configs:
-      - job_name: "iroh-relay"
-        static_configs:
-          - targets:
-              - "iroh-relay.iroh-relay.svc.cluster.local:9090"
-            labels:
-              instance: "iroh-relay"
-
       - job_name: "metadata-relay"
         static_configs:
           - targets:

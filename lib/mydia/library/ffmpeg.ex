@@ -3,8 +3,8 @@ defmodule Mydia.Library.Ffmpeg do
   Shared invocation of the `ffmpeg` and `ffprobe` binaries.
 
   Before this module existed, `run_ffmpeg/1` was copy-pasted as a private
-  function into `PreviewGenerator`, `SpriteGenerator`, `PhashGenerator`, and
-  `ThumbnailGenerator`. All four now delegate here.
+  function into `PhashGenerator` and `ThumbnailGenerator`. Both now delegate
+  here.
 
   Both binaries can be overridden for tests via application env
   (`:ffmpeg_path`, `:ffprobe_path`), which must be absolute paths; otherwise

@@ -23,9 +23,6 @@ defmodule Mydia.Library.MediaFile do
           last_analysis_error: String.t() | nil,
           metadata: Mydia.Library.Structs.FileMetadata.t(),
           cover_blob: String.t() | nil,
-          sprite_blob: String.t() | nil,
-          vtt_blob: String.t() | nil,
-          preview_blob: String.t() | nil,
           phash: String.t() | nil,
           segment_analysis_state: String.t(),
           segments_analyzed_at: DateTime.t() | nil,
@@ -61,9 +58,6 @@ defmodule Mydia.Library.MediaFile do
 
     # Generated media content references (MD5 checksums as storage keys)
     field :cover_blob, :string
-    field :sprite_blob, :string
-    field :vtt_blob, :string
-    field :preview_blob, :string
     field :phash, :string
     field :generated_at, :utc_datetime
 
@@ -152,9 +146,6 @@ defmodule Mydia.Library.MediaFile do
       :last_analysis_error,
       :metadata,
       :cover_blob,
-      :sprite_blob,
-      :vtt_blob,
-      :preview_blob,
       :phash,
       :segment_analysis_state,
       :segments_analyzed_at,
@@ -206,9 +197,6 @@ defmodule Mydia.Library.MediaFile do
       :last_analysis_error,
       :metadata,
       :cover_blob,
-      :sprite_blob,
-      :vtt_blob,
-      :preview_blob,
       :phash,
       :segment_analysis_state,
       :segments_analyzed_at,

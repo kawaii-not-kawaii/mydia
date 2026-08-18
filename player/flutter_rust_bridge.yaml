@@ -1,3 +1,0 @@
-rust_input: crate
-rust_root: rust/mydia_player_p2p
-dart_output: lib/native

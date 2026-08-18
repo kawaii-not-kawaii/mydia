@@ -57,14 +57,10 @@ defmodule MydiaWeb.PlaylistComponents do
   ## Attributes
 
     * `:playlist` - Required. The playlist struct.
-    * `:on_play` - Event name for playing the playlist.
-    * `:on_shuffle` - Event name for shuffling the playlist.
     * `:on_edit` - Event name for editing the playlist.
     * `:on_delete` - Event name for deleting the playlist.
   """
   attr :playlist, :map, required: true
-  attr :on_play, :string, default: "play_playlist"
-  attr :on_shuffle, :string, default: "shuffle_playlist"
   attr :on_edit, :string, default: "edit_playlist"
   attr :on_delete, :string, default: "delete_playlist"
 
@@ -100,13 +96,6 @@ defmodule MydiaWeb.PlaylistComponents do
         </p>
 
         <div class="flex gap-3">
-          <button type="button" phx-click={@on_play} class="btn btn-primary gap-2">
-            <.icon name="hero-play" class="w-5 h-5" /> Play
-          </button>
-          <button type="button" phx-click={@on_shuffle} class="btn btn-ghost gap-2">
-            <.icon name="hero-arrows-right-left" class="w-5 h-5" /> Shuffle
-          </button>
-
           <div class="dropdown dropdown-end ml-auto">
             <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
               <.icon name="hero-ellipsis-horizontal" class="w-5 h-5" />
@@ -140,27 +129,19 @@ defmodule MydiaWeb.PlaylistComponents do
 
     * `:playlist_track` - Required. The playlist track with preloaded track.
     * `:index` - The display position (1-based).
-    * `:on_play` - Event for playing this track.
     * `:on_remove` - Event for removing this track.
   """
   attr :playlist_track, :map, required: true
   attr :index, :integer, required: true
-  attr :on_play, :string, default: "play_track"
   attr :on_remove, :string, default: "remove_track"
 
   def playlist_track_row(assigns) do
     ~H"""
     <tr
       id={"playlist-track-#{@playlist_track.id}"}
-      class="group hover:bg-base-200 cursor-pointer"
-      phx-click={@on_play}
-      phx-value-playlist-track-id={@playlist_track.id}
-      phx-value-index={@index - 1}
+      class="group hover:bg-base-200"
     >
-      <td class="w-12 text-base-content/50 group-hover:hidden">{@index}</td>
-      <td class="w-12 hidden group-hover:table-cell">
-        <.icon name="hero-play" class="w-4 h-4" />
-      </td>
+      <td class="w-12 text-base-content/50">{@index}</td>
       <td>
         <div class="flex items-center gap-3">
           <%= if @playlist_track.track.album && @playlist_track.track.album.cover_url do %>

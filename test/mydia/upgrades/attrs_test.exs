@@ -10,7 +10,7 @@ defmodule Mydia.Upgrades.AttrsTest do
   # verbatim in metadata.
   defp analyzed(raw) do
     %MediaFile{
-      audio_codec: Mydia.Streaming.Codec.normalize_audio_codec(raw),
+      audio_codec: Mydia.Library.Codec.normalize_audio_codec(raw),
       metadata: %FileMetadata{audio_codec_raw: raw},
       size: 1024 * 1024
     }
@@ -39,7 +39,7 @@ defmodule Mydia.Upgrades.AttrsTest do
   end
 
   # Mydia.Library.apply_analysis/2 writes `codec` through
-  # Mydia.Streaming.Codec.normalize_video_codec/1, so an analyzed file holds
+  # Mydia.Library.Codec.normalize_video_codec/1, so an analyzed file holds
   # "h264" / "hevc" / "mpeg4", never the analyzer's display string. Only files
   # with analyzed_at set are ever scored, so this is the vocabulary that
   # actually reaches production. The display-string cases below still matter

@@ -421,22 +421,6 @@ defmodule MydiaWeb.AdultLive.Index do
     end
   end
 
-  defp get_sprite_url(file) do
-    if file.sprite_blob do
-      GeneratedMedia.url_path(:sprite, file.sprite_blob)
-    else
-      nil
-    end
-  end
-
-  defp get_preview_url(file) do
-    if file.preview_blob do
-      GeneratedMedia.url_path(:preview, file.preview_blob)
-    else
-      nil
-    end
-  end
-
   defp get_duration(file) do
     case file.metadata do
       %{"duration" => duration} when is_number(duration) -> trunc(duration)

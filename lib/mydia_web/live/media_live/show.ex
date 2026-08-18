@@ -70,7 +70,6 @@ defmodule MydiaWeb.MediaLive.Show do
       end
 
     # Load next episode for TV shows
-    {next_episode, next_episode_state} = load_next_episode(media_item, socket)
 
     {:ok,
      socket
@@ -131,8 +130,6 @@ defmodule MydiaWeb.MediaLive.Show do
      # Episode expanded/collapsed state (for showing file details)
      |> assign(:expanded_episodes, MapSet.new())
      # Next episode for TV shows
-     |> assign(:next_episode, next_episode)
-     |> assign(:next_episode_state, next_episode_state)
      # Monitoring preset state
      |> assign(:applying_monitoring_preset, false)
      # Subtitle state
@@ -144,7 +141,6 @@ defmodule MydiaWeb.MediaLive.Show do
      |> assign(:selected_languages, ["en"])
      |> assign(:media_file_subtitles, load_media_file_subtitles(media_item))
      # Feature flags
-     |> assign(:playback_enabled, playback_enabled?())
      |> assign(:subtitle_feature_enabled, subtitle_feature_enabled?())
      # Franchise section state
      |> assign(:franchise, nil)

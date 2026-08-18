@@ -1,83 +1,6 @@
 # syntax=docker/dockerfile:1.4
 
 # ============================================
-# Flutter Build Stage
-# ============================================
-# The Flutter version comes from player/.fvmrc, the single source of truth shared
-# with devenv.nix, player/flake.nix and the CI workflows. Nothing to sync here.
-#
-# This installs the SDK rather than using a cirruslabs/flutter image because
-# cirruslabs lags patch releases, so no tag of theirs can be relied on to match
-# .fvmrc. Installing also skips the Android SDK and JDK that image bundles and
-# this web build never touches.
-#
-# Do not reintroduce a version number in this comment. ci-nix.yml's "Check /
-# Flutter Pin" job scans every build and CI file for a Flutter version literal
-# and fails on any hit, so the version is always read from .fvmrc at build time.
-FROM debian:bookworm-slim AS flutter-builder
-
-# curl and unzip are Flutter's own dependencies, not ours: bin/internal/
-# update_dart_sdk.sh curls the Dart SDK zip, and the tool shells out to unzip for
-# the Dart SDK and the engine artifacts precache pulls.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates \
-      curl \
-      git \
-      jq \
-      unzip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Layer keyed on .fvmrc alone, so the SDK is re-fetched only when the pin moves.
-#
-# The SDK comes from the tagged git checkout rather than the published
-# flutter_linux_*.tar.xz archive because Flutter publishes those for x64 Linux
-# only, while release.yml builds this image natively on arm64 runners too. A git
-# checkout carries no prebuilt Dart SDK, so update_dart_sdk.sh fetches the one
-# matching whichever architecture is building.
-#
-# safe.directory is required because that checkout is owned by root while Flutter
-# shells out to git against it. precache --web warms the web artifacts inside
-# this cached layer so `flutter build web` does not fetch them on every build.
-COPY player/.fvmrc /tmp/.fvmrc
-RUN FLUTTER_VERSION="$(jq -r .flutter /tmp/.fvmrc)" && \
-    git clone --depth 1 --branch "$FLUTTER_VERSION" \
-      https://github.com/flutter/flutter.git /opt/flutter && \
-    git config --global --add safe.directory /opt/flutter && \
-    /opt/flutter/bin/flutter config --no-analytics && \
-    /opt/flutter/bin/flutter precache --web
-
-ENV PATH="/opt/flutter/bin:${PATH}"
-
-WORKDIR /app/player
-
-# Copy player source
-COPY player/pubspec.yaml player/pubspec.lock ./
-COPY player/build.yaml ./
-COPY player/lib ./lib
-COPY player/web ./web
-COPY player/rust_builder ./rust_builder
-# Everything `pubspec.yaml` declares under `flutter: assets:`/`fonts:` — the
-# bundled Inter faces and their license. `flutter build web` hard-fails
-# ("unable to locate asset entry in pubspec.yaml") if a declared asset is
-# missing from the build context, so this must track the pubspec.
-COPY player/assets ./assets
-
-# Copy the GraphQL schema (resolves symlink from priv/graphql/)
-COPY priv/graphql/schema.graphql ./lib/graphql/schema.graphql
-
-# Install dependencies, generate code, and build
-# Cache pub packages to avoid re-downloading 1656 dependencies each build
-# --pwa-strategy=none: a scope holds exactly one service worker registration,
-# and web/sw.js needs the app's own scope to intercept media requests over p2p.
-# Leaving Flutter's worker on would mean the two replacing each other on every
-# load and playback cycle. Flutter's own build prints that its service worker
-# is deprecated and slated for removal.
-RUN --mount=type=cache,target=/root/.pub-cache,sharing=locked \
-    flutter pub get && \
-    dart run build_runner build && \
-    flutter build web --release --base-href /player/ --tree-shake-icons --pwa-strategy=none
-
-# ============================================
 # Elixir Build Stage
 # ============================================
 FROM elixir:1.19-alpine AS builder
@@ -95,7 +18,7 @@ RUN apk add --no-cache \
 
 # Rust via rustup (not apk) so the wasm32 target is available for the bundled
 # plugin guests built by the :plugins mix compiler — apk's rust cannot
-# `rustup target add`. The same host toolchain still builds the p2p NIF.
+# `rustup target add`.
 # Keep the default CARGO_HOME (/root/.cargo) so the existing registry/git cache
 # mounts on the compile steps below still apply.
 #
@@ -149,10 +72,9 @@ RUN --mount=type=cache,target=/root/.hex,sharing=locked \
 COPY patches/ueberauth_oidcc_request.ex ./deps/ueberauth_oidcc/lib/ueberauth_oidcc/request.ex
 
 # Compile dependencies
-# Cache cargo registry for Rust NIF compilation (mydia_p2p_core)
+# Cache the cargo registry shared with the wasm plugin guest builds
 RUN --mount=type=cache,target=/root/.cargo/registry,sharing=locked \
     --mount=type=cache,target=/root/.cargo/git,sharing=locked \
-    --mount=type=cache,target=/app/native/mydia_p2p_core/target,sharing=locked \
     mix deps.compile
 
 # Copy application source
@@ -165,18 +87,13 @@ COPY native ./native
 # priv/plugins/*.wasm during `mix compile` below (the .wasm is gitignored).
 COPY plugins ./plugins
 
-# Copy Flutter build output from flutter-builder stage
-COPY --from=flutter-builder /app/player/build/web ./priv/static/player
-
 # Application version: set by CI from the git tag, defaults to "dev" for local builds
 ARG BUILD_VERSION=""
 ENV BUILD_VERSION=${BUILD_VERSION}
 
-# Compile application (includes building Rust NIFs via Rustler)
-# Cache cargo for Rust NIF compilation
+# Compile application (includes building the wasm plugin guests)
 RUN --mount=type=cache,target=/root/.cargo/registry,sharing=locked \
     --mount=type=cache,target=/root/.cargo/git,sharing=locked \
-    --mount=type=cache,target=/app/native/mydia_p2p_core/target,sharing=locked \
     mix compile
 
 # Fail the build if a bundled plugin's wasm artifact was not produced (the
@@ -264,7 +181,6 @@ ENV HOME=/app \
     MIX_ENV=prod \
     PHX_SERVER=true \
     DATABASE_PATH=/config/mydia.db \
-    P2P_KEYPAIR_PATH=/config/p2p_keypair.bin \
     PORT=4000 \
     PUID=1000 \
     PGID=1000 \

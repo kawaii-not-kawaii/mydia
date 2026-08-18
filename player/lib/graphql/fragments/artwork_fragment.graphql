@@ -1,5 +1,0 @@
-fragment ArtworkFragment on Artwork {
-  posterUrl
-  backdropUrl
-  thumbnailUrl
-}

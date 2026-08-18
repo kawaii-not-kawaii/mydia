@@ -2,7 +2,7 @@ defmodule Mydia.Jobs.TraktSync do
   @moduledoc """
   Oban worker for syncing data between Mydia and Trakt.tv.
 
-  Supports sync types: "history", "ratings", "collection", "watchlist", "full".
+  Supports sync types: "ratings", "collection", "watchlist", "full".
   """
   use Oban.Worker, queue: :integrations, max_attempts: 3
 
@@ -35,7 +35,6 @@ defmodule Mydia.Jobs.TraktSync do
     result =
       case sync_type do
         "full" -> Sync.sync_all(user_id)
-        "history" -> Sync.sync_history(user_id)
         "ratings" -> Sync.sync_ratings(user_id)
         "collection" -> Sync.sync_collection(user_id)
         "watchlist" -> Sync.sync_watchlist(user_id)

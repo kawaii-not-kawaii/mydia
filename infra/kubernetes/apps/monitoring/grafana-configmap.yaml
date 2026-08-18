@@ -29,7 +29,7 @@ data:
     headers = Email:X-Auth-Request-Email
 
     [dashboards]
-    default_home_dashboard_path = /var/lib/grafana/dashboards/iroh-relay.json
+    default_home_dashboard_path = /var/lib/grafana/dashboards/metadata-relay.json
 
   datasource.yaml: |
     apiVersion: 1

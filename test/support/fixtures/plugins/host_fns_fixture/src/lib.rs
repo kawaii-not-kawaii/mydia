@@ -7,7 +7,7 @@
 
 use mydia_plugin_sdk::host;
 use mydia_plugin_sdk::types::{
-    DataRequest, Event, ListRequest, OutboundRequest, ReadResult, ScheduleTick, WatchTarget,
+    DataRequest, Event, ListRequest, OutboundRequest, ReadResult, ScheduleTick,
 };
 use std::collections::HashMap;
 use tinyjson::JsonValue;
@@ -118,31 +118,6 @@ fn on_event(evt: Event) -> Result<String, String> {
                     ))
                 }
                 Err(e) => Err(format!("data-list error: {:?}", e)),
-            }
-        }
-
-        "ensure-watched" => {
-            let target = WatchTarget {
-                user_id: str_field(&m, "user_id").unwrap_or_default(),
-                imdb_id: str_field(&m, "imdb_id"),
-                tmdb_id: i64_field(&m, "tmdb_id"),
-                tvdb_id: i64_field(&m, "tvdb_id"),
-                season_number: u32_field(&m, "season_number"),
-                episode_number: u32_field(&m, "episode_number"),
-                watched_at: str_field(&m, "watched_at"),
-            };
-
-            match host::ensure_watched(&target) {
-                Ok(result) => {
-                    use mydia_plugin_sdk::types::EnsureWatchedStatus::*;
-                    let status = match result.status {
-                        Changed => "changed",
-                        AlreadyWatched => "already-watched",
-                        NotFound => "not-found",
-                    };
-                    Ok(format!("{{\"status\":{:?}}}", status))
-                }
-                Err(e) => Err(format!("ensure-watched error: {:?}", e)),
             }
         }
 
