@@ -24,4 +24,3 @@ If you are starting from nothing, begin with a
 - [Updating Mydia](update-mydia.md) - update your installation or track a pre-release build
 - [Monitoring and logs](monitor-and-logs.md) - check health and view logs
 - [NixOS deployment](nixos.md) - deploy Mydia declaratively on NixOS
-- [Remote access](remote-access.md) - connect the mobile app to your instance from anywhere
