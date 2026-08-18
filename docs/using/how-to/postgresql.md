@@ -33,7 +33,7 @@ services:
       retries: 5
 
   mydia:
-    image: ghcr.io/getmydia/mydia:latest-pg
+    image: ghcr.io/kawaii-not-kawaii/mydia:master-pg
     depends_on:
       postgres:
         condition: service_healthy

@@ -21,7 +21,7 @@ docker compose up -d
 ```bash
 docker stop mydia
 docker rm mydia
-docker pull ghcr.io/getmydia/mydia:latest
+docker pull ghcr.io/kawaii-not-kawaii/mydia:master
 # Run your docker run command again
 ```
 
@@ -29,50 +29,48 @@ Migrations run automatically on startup, after Mydia snapshots the SQLite
 database (see [Backing Up and Restoring](backup-restore.md)). Your data in
 `/config` is preserved.
 
-## Testing Pre-release Builds
+## Available Tags
 
-Mydia publishes two rolling tags: `:latest` (stable) and `:master` (rebuilds on every merge to the main branch). Track `:master` to try changes before they reach a stable release:
-
-```yaml
-services:
-  mydia:
-    image: ghcr.io/getmydia/mydia:master
-```
-
-PostgreSQL users need the `-pg` variant, exactly as with the stable tags:
+This fork publishes two rolling tags, both rebuilt from every commit on the
+default branch:
 
 ```yaml
 services:
   mydia:
-    image: ghcr.io/getmydia/mydia:master-pg
+    image: ghcr.io/kawaii-not-kawaii/mydia:master
 ```
 
-!!! warning "`:master` is amd64 only"
-    The `:master` and `:master-pg` builds are `linux/amd64` and nothing else. They
-    will not run on a Raspberry Pi, an arm64 server, or Apple Silicon. Only tagged
-    releases are built multi-arch, so on arm64 hardware you are limited to `:latest`,
-    `:beta`, or a pinned version.
+PostgreSQL users need the `-pg` variant:
 
-The `:master` tag:
+```yaml
+services:
+  mydia:
+    image: ghcr.io/kawaii-not-kawaii/mydia:master-pg
+```
+
+!!! warning "These builds are amd64 only"
+    `master` and `master-pg` are `linux/amd64` and nothing else. They will not
+    run on a Raspberry Pi, an arm64 server, or Apple Silicon. Multi-arch images
+    are produced by the release workflow, so on arm64 hardware you need to build
+    locally with `docker build -t mydia .`.
+
+Because they track the default branch, these tags:
 
 - May contain experimental features
 - May have breaking changes
-- Not recommended for production
-- Is not covered by release notes, so read the commit log if something changes under you
-
-If you want pre-release builds on arm64, use `:beta` (or `:beta-pg`), which is
-published from tagged pre-releases and is multi-arch.
+- Are not covered by release notes, so read the commit log if something changes under you
 
 ## Version Pinning
 
-Pin to a specific version for stability:
+There are no `latest`, `beta` or version tags yet: those are produced by the
+release workflow, which has not been run on this fork. Until a release is cut,
+pin by digest if you need a fixed version:
 
 ```yaml
 services:
   mydia:
-    image: ghcr.io/getmydia/mydia:1.0.0
+    image: ghcr.io/kawaii-not-kawaii/mydia@sha256:<digest>
 ```
 
-Pinned tags come in both database flavours (`1.0.0` for SQLite, `1.0.0-pg` for
-PostgreSQL) and both are multi-arch. Partial pins work too: `1.0` follows the
-latest patch on that minor, and `1` follows the latest release in that major.
+Read the digest of what you are running with
+`docker inspect --format '{{index .RepoDigests 0}}' mydia`.
