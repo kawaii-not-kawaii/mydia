@@ -19,8 +19,22 @@ services:
       SECRET_KEY_BASE: "${SECRET_KEY_BASE:?run openssl rand -base64 48}"
       GUARDIAN_SECRET_KEY: "${GUARDIAN_SECRET_KEY:?run openssl rand -base64 48}"
 
-      # Host you reach Mydia on. Used to build absolute links.
-      PHX_HOST: "${PHX_HOST:-localhost}"
+      # The hostname you actually type in the browser. This is not cosmetic:
+      # LiveView's WebSocket is rejected when the browser's Origin does not
+      # match, which shows up as "something went wrong" followed by the page
+      # reloading, while ordinary page loads keep working.
+      PHX_HOST: "${PHX_HOST:?set to the host you browse to, e.g. tower or mydia.example.com}"
+
+      # Set this when you reach the same instance by more than one name, which
+      # is normal on Tailscale (short name, MagicDNS name, and 100.x address
+      # are three different origins). Comma-separated, scheme optional:
+      #   PHX_CHECK_ORIGIN=//tower,//tower.tailnet.ts.net,//100.101.102.103
+      # `false` disables the check entirely: acceptable on a private tailnet,
+      # not on anything internet-facing.
+      # Left unset deliberately: an empty value is not the same as absent
+      # here. Absent means "allow PHX_HOST"; an empty string parses to an empty
+      # allowlist, which rejects every origin including the right one.
+      PHX_CHECK_ORIGIN:
 
       # Must match the owner of ./config and your media, or imports fail on
       # permissions rather than on anything interesting.
