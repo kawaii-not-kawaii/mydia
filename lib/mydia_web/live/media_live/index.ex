@@ -730,11 +730,8 @@ defmodule MydiaWeb.MediaLive.Index do
   end
 
   defp build_query_opts(assigns) do
-    user_id = assigns.current_user.id
-
-    # Build preload queries filtered by current user / active (non-trashed) files
+    # Preload only active (non-trashed) files
     import Ecto.Query
-    progress_query = from p in Mydia.Playback.Progress, where: p.user_id == ^user_id
     active_files_query = from(mf in Mydia.Library.MediaFile, where: is_nil(mf.trashed_at))
 
     []
@@ -744,7 +741,6 @@ defmodule MydiaWeb.MediaLive.Index do
     |> Keyword.put(:preload, [
       :downloads,
       media_files: active_files_query,
-      playback_progress: progress_query,
       episodes: [media_files: active_files_query, downloads: []]
     ])
   end
@@ -946,20 +942,6 @@ defmodule MydiaWeb.MediaLive.Index do
 
       _ ->
         "/images/no-poster.svg"
-    end
-  end
-
-  defp get_progress(media_item) do
-    # Since playback_progress is has_many but filtered by user_id,
-    # there should only be one (or zero) progress records
-    if Ecto.assoc_loaded?(media_item.playback_progress) do
-      case media_item.playback_progress do
-        [progress | _] -> progress
-        [] -> nil
-        _ -> nil
-      end
-    else
-      nil
     end
   end
 

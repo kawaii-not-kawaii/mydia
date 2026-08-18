@@ -39,7 +39,7 @@ Complete reference of all environment variables supported by Mydia.
 
 The `PORT` and `HTTPS_PORT` environment variables serve dual purposes:
 1. **Server binding** - The ports on which the HTTP and HTTPS servers listen
-2. **URL generation** - Used to generate direct access URLs (e.g., sslip.io URLs for remote access)
+2. **URL generation** - Used to generate absolute links in notifications and the UI
 
 This simplifies configuration by eliminating the need for separate port variables for URL generation.
 
@@ -87,10 +87,8 @@ Configure additional libraries using numbered variables (`<N>` = 1, 2, 3, etc.):
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ENABLE_PLAYBACK` | Enable media playback controls and HLS streaming | `true` |
 | `ENABLE_CARDIGANN` | Enable native Cardigann indexer support | `true` |
 | `ENABLE_IMPORT_LISTS` | Enable import lists for syncing external lists (TMDB watchlists, popular, etc.) | `false` |
-| `ENABLE_REMOTE_ACCESS` | Enable P2P remote access for the Flutter player | `false` |
 
 ## Download Clients
 
@@ -262,16 +260,6 @@ For PostgreSQL deployments (using `latest-pg` image):
 | `DATABASE_PASSWORD` | Database password | - |
 | `POOL_SIZE` | Connection pool size | `10` |
 
-## Remote Access (P2P)
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `P2P_KEYPAIR_PATH` | Path to store the P2P keypair for persistent node identity | - |
-| `P2P_BIND_PORT` | UDP port for direct peer-to-peer connections (enables hole punching) | Random |
-
-!!! note
-    `P2P_KEYPAIR_PATH` is required for remote access. Without it, the node ID changes on restart and paired devices can't reconnect.
-
 ## Metadata Relay
 
 | Variable | Description | Default |
@@ -279,7 +267,7 @@ For PostgreSQL deployments (using `latest-pg` image):
 | `METADATA_RELAY_URL` | URL for the metadata relay service | `https://relay.mydia.dev` |
 | `METADATA_LANGUAGE` | Language sent to TMDB/TVDB for titles, descriptions, and posters. Accepts ISO 639-1 codes (`de`) or BCP 47 tags (`de-DE`, `pt-BR`). | `en-US` |
 
-The metadata relay proxies requests to TVDB/TMDB and handles remote access relay connections. See [Architecture](../../contributing/architecture.md) for details.
+The metadata relay proxies requests to TVDB/TMDB. See [Architecture](../../contributing/architecture.md) for details.
 
 `METADATA_LANGUAGE` can also be set per-instance from **Admin > Configuration > Settings**, under **Metadata**, in the admin UI; the env var overrides the database value when both are set.
 
@@ -305,16 +293,6 @@ These pace the daily upgrade sweep instance-wide. Which items it considers is se
 | `MYDIA_TRASH_DIR` | Where replaced and deleted files are moved. Must be outside every library path. Unset trashes into `.mydia-trash` beside each library | Beside each library |
 
 See [Automatic Quality Upgrades](../how-to/automatic-quality-upgrades.md) for what these cost you in disk.
-
-## Streaming
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MAX_TRANSCODE_HEIGHT` | Ceiling in pixels on the output height of any transcode, for example `720`. Unset means no ceiling and a transcode keeps the source resolution | No limit |
-
-A transcode only happens when a file's codec is not playable as-is, or when a player asks for a quality below the source. This ceiling bounds those; it never
-upscales, and it does not apply when a file is streamed without re-encoding. Set it on a server that cannot encode 4K in realtime, which is what an
-incompatible 4K file would otherwise ask of it. Also settable under **Admin > Configuration > Settings > Streaming**.
 
 ## Advanced Configuration
 

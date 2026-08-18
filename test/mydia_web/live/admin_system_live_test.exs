@@ -227,43 +227,11 @@ defmodule MydiaWeb.AdminSystemLiveTest do
           download_clients_count: 0,
           indexers_count: 0,
           stuck_upgrades: 0,
-          active_sessions: [],
           active_jobs: [],
           recent_activity: []
         },
         overrides
       )
-    end
-
-    test "renders an active streaming session for an OIDC user with no username" do
-      oidc_user = %Mydia.Accounts.User{
-        id: Ecto.UUID.generate(),
-        username: nil,
-        email: "oidc@example.com",
-        role: "admin"
-      }
-
-      session = %Mydia.Streaming.ActiveSession{
-        session_id: "sess-1",
-        user: oidc_user,
-        media_title: "Some Movie",
-        media_type: :movie,
-        episode_info: nil,
-        mode: :direct,
-        started_at: DateTime.utc_now(),
-        ready: true
-      }
-
-      html =
-        render_component(
-          &MydiaWeb.AdminSystemLive.Components.status_tab/1,
-          status_tab_assigns(%{active_sessions: [session]})
-        )
-
-      assert html =~ "Some Movie"
-
-      # Avatar initials fall back to the email rather than crashing on nil.
-      assert html =~ ~r{class="avatar placeholder".*?<span[^>]*>\s*oi\s*</span>}s
     end
 
     test "renders an active transcode job for an OIDC user with no username" do
@@ -276,7 +244,7 @@ defmodule MydiaWeb.AdminSystemLiveTest do
 
       job = %{
         id: Ecto.UUID.generate(),
-        type: "stream",
+        type: "download",
         status: "transcoding",
         progress: 0.42,
         error: nil,

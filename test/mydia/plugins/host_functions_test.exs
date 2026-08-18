@@ -185,7 +185,6 @@ defmodule Mydia.Plugins.HostFunctionsTest do
                "kv-set" => {:fn, _},
                "kv-delete" => {:fn, _},
                "data-list" => {:fn, _},
-               "ensure-watched" => {:fn, _},
                "connections-list" => {:fn, _},
                "connection-request" => {:fn, _}
              } = fns
@@ -378,73 +377,10 @@ defmodule Mydia.Plugins.HostFunctionsTest do
     end
 
     test "a real namespace that is not granted is denied" do
-      p = plugin(%{"data:read" => ["media_item"]})
+      p = plugin(%{"events:subscribe" => ["media_item.added"]})
 
       assert {:error, %Error{type: :capability_denied}} =
-               HostFunctions.data_list(p, list_req("playback_progress"))
-    end
-
-    test "AE3: playback_progress returns rows only for connected users" do
-      connected = user_fixture()
-      other = user_fixture()
-      movie = create_movie()
-
-      {:ok, _} = Mydia.Plugins.Connections.connect("tester", connected.id, %{access_token: "t"})
-
-      {:ok, _} =
-        Mydia.Playback.save_progress(connected.id, [media_item_id: movie.id], %{
-          position_seconds: 95,
-          duration_seconds: 100
-        })
-
-      {:ok, _} =
-        Mydia.Playback.save_progress(other.id, [media_item_id: movie.id], %{
-          position_seconds: 95,
-          duration_seconds: 100
-        })
-
-      p = plugin(%{"data:read" => ["playback_progress"]})
-      assert {:ok, %{items: items}} = HostFunctions.data_list(p, list_req("playback_progress"))
-
-      user_ids = Enum.map(items, fn {:"playback-progress", rec} -> rec[:"user-id"] end)
-      assert connected.id in user_ids
-      refute other.id in user_ids
-    end
-
-    test "an episode progress projection carries coordinates and the show's ids" do
-      user = user_fixture()
-      {:ok, _} = Mydia.Plugins.Connections.connect("tester", user.id, %{access_token: "t"})
-
-      {:ok, show} =
-        Mydia.Media.create_media_item(
-          %{title: "Show", type: "tv_show", tmdb_id: System.unique_integer([:positive])},
-          skip_episode_refresh: true
-        )
-
-      {:ok, episode} =
-        Mydia.Media.create_episode(%{
-          media_item_id: show.id,
-          season_number: 2,
-          episode_number: 4,
-          title: "Ep"
-        })
-
-      {:ok, _} =
-        Mydia.Playback.save_progress(user.id, [episode_id: episode.id], %{
-          position_seconds: 95,
-          duration_seconds: 100
-        })
-
-      p = plugin(%{"data:read" => ["playback_progress"]})
-
-      assert {:ok, %{items: [{:"playback-progress", rec}]}} =
-               HostFunctions.data_list(p, list_req("playback_progress"))
-
-      assert rec[:"item-type"] == "episode"
-      assert rec[:"season-number"] == {:some, 2}
-      assert rec[:"episode-number"] == {:some, 4}
-      assert rec[:"tmdb-id"] == {:some, show.tmdb_id}
-      assert rec.watched == true
+               HostFunctions.data_list(p, list_req("media_item"))
     end
   end
 
@@ -511,127 +447,6 @@ defmodule Mydia.Plugins.HostFunctionsTest do
                  resolver: loopback_resolver(),
                  allow_private: true
                )
-    end
-  end
-
-  describe "ensure_watched/2 (surfaces:write playback:watched)" do
-    setup do
-      {:ok, _} =
-        Mydia.Settings.create_plugin_config(%{
-          slug: "tester",
-          name: "Tester",
-          version: "1.0.0",
-          source_url: "test",
-          manifest: %{
-            "slug" => "tester",
-            "name" => "Tester",
-            "version" => "1.0.0",
-            "capabilities" => %{"events:subscribe" => ["media_item.added"]}
-          },
-          granted_capabilities: %{},
-          enabled: false
-        })
-
-      user = user_fixture()
-      {:ok, _} = Connections.connect("tester", user.id, %{access_token: "t"})
-      %{user: user}
-    end
-
-    defp opt(nil), do: :none
-    defp opt(v), do: {:some, v}
-
-    defp target(user_id, opts) do
-      %{
-        "user-id": user_id,
-        "imdb-id": opt(opts[:imdb]),
-        "tmdb-id": opt(opts[:tmdb]),
-        "tvdb-id": opt(opts[:tvdb]),
-        "season-number": opt(opts[:season]),
-        "episode-number": opt(opts[:episode]),
-        "watched-at": opt(opts[:watched_at])
-      }
-    end
-
-    defp movie_with(attrs) do
-      {:ok, item} =
-        Mydia.Media.create_media_item(Map.merge(%{title: "M", type: "movie", year: 2024}, attrs))
-
-      item
-    end
-
-    defp finished_events(user) do
-      Events.list_events(type: "playback.finished", actor_type: :user, actor_id: user.id)
-    end
-
-    test "grant access: write is denied without surfaces:write playback:watched", %{user: user} do
-      p = plugin(%{"events:subscribe" => ["media_item.added"]})
-
-      assert {:error, %Error{type: :capability_denied}} =
-               HostFunctions.ensure_watched(p, target(user.id, imdb: "tt1"))
-    end
-
-    test "AE3: a user with no active connection is denied" do
-      stranger = user_fixture()
-      p = plugin(%{"surfaces:write" => ["playback:watched"]})
-
-      assert {:error, %Error{type: :capability_denied}} =
-               HostFunctions.ensure_watched(p, target(stranger.id, imdb: "tt1"))
-    end
-
-    test "AE1: a matched movie is marked watched; re-applying is an idempotent no-op",
-         %{user: user} do
-      _movie = movie_with(%{imdb_id: "tt500", tmdb_id: 500})
-      p = plugin(%{"surfaces:write" => ["playback:watched"]})
-
-      assert {:ok, %{status: :changed}} =
-               HostFunctions.ensure_watched(p, target(user.id, imdb: "tt500"))
-
-      # A synthetic-progress row created -> one finished event, origin plugin:tester.
-      assert [event] = finished_events(user)
-      assert event.metadata["origin"] == "plugin:tester"
-
-      # Re-applying reports already-watched and emits no new event.
-      assert {:ok, %{status: :"already-watched"}} =
-               HostFunctions.ensure_watched(p, target(user.id, imdb: "tt500"))
-
-      assert [_only] = finished_events(user)
-    end
-
-    test "unmatched external ids return not-found with no write", %{user: user} do
-      p = plugin(%{"surfaces:write" => ["playback:watched"]})
-
-      assert {:ok, %{status: :"not-found"}} =
-               HostFunctions.ensure_watched(p, target(user.id, imdb: "tt-nope"))
-
-      assert finished_events(user) == []
-    end
-
-    test "episode coordinates resolve through the show; a missing episode is not-found",
-         %{user: user} do
-      {:ok, show} =
-        Mydia.Media.create_media_item(
-          %{title: "Show", type: "tv_show", tvdb_id: 999},
-          skip_episode_refresh: true
-        )
-
-      {:ok, ep} =
-        Mydia.Media.create_episode(%{
-          media_item_id: show.id,
-          season_number: 3,
-          episode_number: 7,
-          title: "Ep"
-        })
-
-      p = plugin(%{"surfaces:write" => ["playback:watched"]})
-
-      assert {:ok, %{status: :changed}} =
-               HostFunctions.ensure_watched(p, target(user.id, tvdb: 999, season: 3, episode: 7))
-
-      assert Mydia.Playback.get_progress(user.id, episode_id: ep.id).watched == true
-
-      # A nonexistent episode of the same show is not-found.
-      assert {:ok, %{status: :"not-found"}} =
-               HostFunctions.ensure_watched(p, target(user.id, tvdb: 999, season: 9, episode: 9))
     end
   end
 end

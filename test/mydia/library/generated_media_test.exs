@@ -44,7 +44,7 @@ defmodule Mydia.Library.GeneratedMediaTest do
     end
 
     test "stores content for all supported types" do
-      for type <- [:cover, :sprite, :vtt, :preview] do
+      for type <- [:cover, :fingerprint] do
         assert {:ok, checksum} = GeneratedMedia.store(type, "content for #{type}")
         assert GeneratedMedia.exists?(type, checksum)
       end
@@ -97,18 +97,14 @@ defmodule Mydia.Library.GeneratedMediaTest do
       checksum = "abc123def456789012345678901234ab"
 
       assert GeneratedMedia.get_path(:cover, checksum) =~ ".jpg"
-      assert GeneratedMedia.get_path(:sprite, checksum) =~ ".jpg"
-      assert GeneratedMedia.get_path(:vtt, checksum) =~ ".vtt"
-      assert GeneratedMedia.get_path(:preview, checksum) =~ ".mp4"
+      assert GeneratedMedia.get_path(:fingerprint, checksum) =~ ".fpr"
     end
 
     test "uses correct directory for each type" do
       checksum = "abc123def456789012345678901234ab"
 
       assert GeneratedMedia.get_path(:cover, checksum) =~ "/covers/"
-      assert GeneratedMedia.get_path(:sprite, checksum) =~ "/sprites/"
-      assert GeneratedMedia.get_path(:vtt, checksum) =~ "/vtt/"
-      assert GeneratedMedia.get_path(:preview, checksum) =~ "/previews/"
+      assert GeneratedMedia.get_path(:fingerprint, checksum) =~ "/fingerprints/"
     end
   end
 
@@ -124,7 +120,7 @@ defmodule Mydia.Library.GeneratedMediaTest do
 
     test "returns false for wrong type with existing checksum" do
       {:ok, checksum} = GeneratedMedia.store(:cover, @test_content)
-      refute GeneratedMedia.exists?(:sprite, checksum)
+      refute GeneratedMedia.exists?(:fingerprint, checksum)
     end
   end
 
@@ -155,9 +151,7 @@ defmodule Mydia.Library.GeneratedMediaTest do
       checksum = "abc123def456789012345678901234ab"
 
       assert GeneratedMedia.url_path(:cover, checksum) =~ ".jpg"
-      assert GeneratedMedia.url_path(:sprite, checksum) =~ ".jpg"
-      assert GeneratedMedia.url_path(:vtt, checksum) =~ ".vtt"
-      assert GeneratedMedia.url_path(:preview, checksum) =~ ".mp4"
+      assert GeneratedMedia.url_path(:fingerprint, checksum) =~ ".fpr"
     end
   end
 

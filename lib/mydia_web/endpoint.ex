@@ -1,6 +1,5 @@
 defmodule MydiaWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :mydia
-  use Absinthe.Phoenix.Endpoint
 
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
@@ -30,11 +29,6 @@ defmodule MydiaWeb.Endpoint do
 
   # WebSocket for device reconnection
   socket "/ws", MydiaWeb.UserSocket,
-    websocket: true,
-    longpoll: false
-
-  # WebSocket for GraphQL subscriptions
-  socket "/api/graphql/socket", Absinthe.Phoenix.Socket,
     websocket: true,
     longpoll: false
 
@@ -85,13 +79,6 @@ defmodule MydiaWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
-
-  # CORS support for cross-origin API requests (standalone player, native apps)
-  # Must be before the router so OPTIONS preflight requests are handled before authentication
-  plug Corsica,
-    origins: "*",
-    allow_headers: ["content-type", "authorization", "x-request-id"],
-    allow_methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"]
 
   plug MydiaWeb.Router
 end

@@ -10,34 +10,17 @@ defmodule Mydia.Integrations.Trakt.Sync do
 
   alias Mydia.Integrations
   alias Mydia.Integrations.Trakt.Client
-  alias Mydia.Integrations.UserIntegration
   alias Mydia.Media
-  alias Mydia.Playback
   alias Mydia.Repo
 
   require Logger
 
   @doc """
-  Runs a full sync for a user: history, ratings, collection.
+  Runs a full sync for a user: ratings and collection.
   """
   def sync_all(user_id) do
-    with {:ok, _} <- sync_history(user_id),
-         {:ok, _} <- sync_collection(user_id) do
+    with {:ok, _} <- sync_collection(user_id) do
       update_last_synced(user_id)
-      {:ok, :synced}
-    end
-  end
-
-  @doc """
-  Syncs watch history between Mydia and Trakt.
-
-  Pull: Fetches Trakt history, matches to local media, updates local progress.
-  Push: Finds locally watched items, pushes to Trakt.
-  """
-  def sync_history(user_id) do
-    with {:ok, token} <- Integrations.get_trakt_token(user_id) do
-      pull_history(user_id, token)
-      push_history(user_id, token)
       {:ok, :synced}
     end
   end
@@ -70,123 +53,6 @@ defmodule Mydia.Integrations.Trakt.Sync do
       {:ok, :synced}
     end
   end
-
-  # ── Pull History ────────────────────────────────────────────────────
-
-  defp pull_history(user_id, token) do
-    integration = Integrations.get_user_integration(user_id, "trakt")
-    start_at = format_start_at(integration)
-
-    # Pull movie history
-    params = if start_at, do: [start_at: start_at], else: []
-
-    case Client.get_sync("history", "movies", token, params) do
-      {:ok, items} when is_list(items) ->
-        Enum.each(items, fn item ->
-          match_and_mark_watched(user_id, item, :movie)
-        end)
-
-      {:error, reason} ->
-        Logger.warning("Failed to pull Trakt movie history: #{inspect(reason)}")
-    end
-
-    # Pull episode history
-    case Client.get_sync("history", "episodes", token, params) do
-      {:ok, items} when is_list(items) ->
-        Enum.each(items, fn item ->
-          match_and_mark_watched(user_id, item, :episode)
-        end)
-
-      {:error, reason} ->
-        Logger.warning("Failed to pull Trakt episode history: #{inspect(reason)}")
-    end
-  end
-
-  defp match_and_mark_watched(user_id, trakt_item, :movie) do
-    ids = get_in(trakt_item, ["movie", "ids"]) || %{}
-
-    case find_media_item_by_ids(ids) do
-      nil -> :skip
-      media_item -> ensure_watched(user_id, media_item_id: media_item.id)
-    end
-  end
-
-  defp match_and_mark_watched(user_id, trakt_item, :episode) do
-    show_ids = get_in(trakt_item, ["show", "ids"]) || %{}
-    season = get_in(trakt_item, ["episode", "season"])
-    number = get_in(trakt_item, ["episode", "number"])
-
-    with %{id: show_id} <- find_media_item_by_ids(show_ids),
-         %{id: ep_id} <- find_episode(show_id, season, number) do
-      ensure_watched(user_id, episode_id: ep_id)
-    end
-  end
-
-  defp ensure_watched(user_id, content_id) do
-    case Playback.get_progress(user_id, content_id) do
-      %{watched: true} ->
-        :already_watched
-
-      nil ->
-        Playback.save_progress(
-          user_id,
-          content_id,
-          %{position_seconds: 0, duration_seconds: 1, watched: true},
-          origin: "sync:trakt"
-        )
-
-      _existing ->
-        Playback.mark_watched(user_id, content_id, origin: "sync:trakt")
-    end
-  end
-
-  # ── Push History ────────────────────────────────────────────────────
-
-  defp push_history(user_id, token) do
-    # Get locally watched movies since last sync
-    watched = Playback.list_user_progress(user_id, watched: true)
-
-    movies =
-      watched
-      |> Enum.filter(&(&1.media_item_id != nil))
-      |> Enum.map(fn p ->
-        item = Repo.get(Media.MediaItem, p.media_item_id)
-
-        if item do
-          build_trakt_movie(item, p.last_watched_at)
-        end
-      end)
-      |> Enum.reject(&is_nil/1)
-
-    if movies != [] do
-      case Client.add_sync("history", %{movies: movies}, token) do
-        {:ok, _} -> Logger.debug("Pushed #{length(movies)} movies to Trakt history")
-        {:error, reason} -> Logger.warning("Failed to push Trakt history: #{inspect(reason)}")
-      end
-    end
-
-    # Push watched episodes
-    episodes =
-      watched
-      |> Enum.filter(&(&1.episode_id != nil))
-      |> Enum.map(fn p ->
-        ep = Repo.get(Media.Episode, p.episode_id) |> Repo.preload(:media_item)
-
-        if ep && ep.media_item do
-          build_trakt_episode(ep, p.last_watched_at)
-        end
-      end)
-      |> Enum.reject(&is_nil/1)
-
-    if episodes != [] do
-      case Client.add_sync("history", %{episodes: episodes}, token) do
-        {:ok, _} -> Logger.debug("Pushed #{length(episodes)} episodes to Trakt history")
-        {:error, reason} -> Logger.warning("Failed to push Trakt history: #{inspect(reason)}")
-      end
-    end
-  end
-
-  # ── Push Collection ─────────────────────────────────────────────────
 
   defp push_collection(_user_id, token) do
     # Push all media items that have files
@@ -230,51 +96,11 @@ defmodule Mydia.Integrations.Trakt.Sync do
 
   # ── Matching Helpers ────────────────────────────────────────────────
 
-  # Trakt uses string keys for IDs; normalize to atoms for Media.find_by_external_ids/1
-  defp find_media_item_by_ids(ids) do
-    normalized =
-      ids
-      |> Map.take(["imdb", "tmdb", "tvdb"])
-      |> Map.new(fn {k, v} -> {String.to_existing_atom(k), v} end)
-
-    Media.find_by_external_ids(normalized)
-  end
-
-  defp find_episode(show_id, season, number) do
-    Media.find_episode(show_id, season, number)
-  end
-
   # ── Trakt Payload Builders ─────────────────────────────────────────
 
-  defp build_trakt_movie(item, watched_at \\ nil)
-
-  defp build_trakt_movie(item, watched_at) do
+  defp build_trakt_movie(item) do
     ids = build_ids(item)
-
-    if ids == %{},
-      do: nil,
-      else: %{ids: ids, title: item.title, year: item.year, watched_at: watched_at}
-  end
-
-  defp build_trakt_episode(episode, watched_at) do
-    show = episode.media_item
-    ids = build_ids(show)
-
-    if ids == %{} do
-      nil
-    else
-      %{
-        ids: ids,
-        title: show.title,
-        year: show.year,
-        seasons: [
-          %{
-            number: episode.season_number,
-            episodes: [%{number: episode.episode_number, watched_at: watched_at}]
-          }
-        ]
-      }
-    end
+    if ids == %{}, do: nil, else: %{ids: ids, title: item.title, year: item.year}
   end
 
   defp build_trakt_show(item) do
@@ -287,15 +113,6 @@ defmodule Mydia.Integrations.Trakt.Sync do
     |> then(fn m -> if item.imdb_id, do: Map.put(m, :imdb, item.imdb_id), else: m end)
     |> then(fn m -> if item.tmdb_id, do: Map.put(m, :tmdb, item.tmdb_id), else: m end)
     |> then(fn m -> if item.tvdb_id, do: Map.put(m, :tvdb, item.tvdb_id), else: m end)
-  end
-
-  # ── Timestamp Helpers ───────────────────────────────────────────────
-
-  defp format_start_at(nil), do: nil
-  defp format_start_at(%UserIntegration{last_synced_at: nil}), do: nil
-
-  defp format_start_at(%UserIntegration{last_synced_at: last_synced}) do
-    DateTime.to_iso8601(last_synced)
   end
 
   defp update_last_synced(user_id) do

@@ -1,5 +1,0 @@
-mutation CancelDownloadJob($jobId: ID!) {
-  cancelDownloadJob(jobId: $jobId) {
-    success
-  }
-}

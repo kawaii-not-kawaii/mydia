@@ -1553,47 +1553,4 @@ defmodule Mydia.Events do
   # Helper to format datetime for metadata
   defp format_datetime(nil), do: nil
   defp format_datetime(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
-
-  ## Playback Event Helpers (U1)
-
-  @playback_actions ~w(started progressed paused finished)
-
-  @doc """
-  Records a `playback.<action>` event for a user's watch activity.
-
-  `action` is one of `"started"`, `"progressed"`, `"paused"`, or `"finished"`.
-  `content_id` is the keyword tuple used throughout `Mydia.Playback`
-  (`[media_item_id: id]` or `[episode_id: id]`); the user rides in the event
-  envelope as `actor_id`. `meta` is a string-key map carrying playback context
-  including `"origin"` (`"player"`, `"sync:<provider>"`, or `"plugin:<slug>"`),
-  which the plugin dispatcher reads to suppress echo delivery (R14).
-
-  Emission is throttled by the caller (`Mydia.Playback`, R19); this function
-  always emits.
-
-  ## Examples
-
-      iex> playback_event("finished", user_id, [episode_id: id], %{"origin" => "player"})
-      :ok
-  """
-  def playback_event(action, user_id, content_id, meta \\ %{})
-      when action in @playback_actions and is_list(content_id) and is_map(meta) do
-    {resource_type, resource_id, ids} = playback_resource(content_id)
-
-    create_event_async(%{
-      category: "playback",
-      type: "playback.#{action}",
-      actor_type: :user,
-      actor_id: user_id,
-      resource_type: resource_type,
-      resource_id: resource_id,
-      metadata: Map.merge(ids, meta)
-    })
-  end
-
-  defp playback_resource(media_item_id: id),
-    do: {"media_item", id, %{"media_item_id" => id}}
-
-  defp playback_resource(episode_id: id),
-    do: {"episode", id, %{"episode_id" => id}}
 end

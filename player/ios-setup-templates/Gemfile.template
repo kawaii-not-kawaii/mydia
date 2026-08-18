@@ -1,7 +1,0 @@
-# Gemfile for Fastlane
-# Copy this to ios/Gemfile after running `flutter create --platforms=ios .`
-
-source "https://rubygems.org"
-
-gem "fastlane"
-gem "cocoapods"

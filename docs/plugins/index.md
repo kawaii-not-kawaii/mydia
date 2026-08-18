@@ -5,12 +5,11 @@ plugin someone else wrote, install and configure it from the admin UI; you do
 not need any of this.
 
 Mydia plugins are small, sandboxed programs that react to what happens in your
-library. When a movie is added, a download completes, a file is imported, or
-someone finishes watching something, Mydia hands the event to your plugin and
-lets it do something useful: post a notification, call an external API, enrich
-the event with library data. Plugins can also run on a fixed schedule, keep a
-little durable state, link a per-user third-party account, and sync watched
-state both ways. The bundled Simkl plugin does all of this.
+library. When a movie is added, a download completes, or a file is imported,
+Mydia hands the event to your plugin and lets it do something useful: post a
+notification, call an external API, enrich the event with library data. Plugins
+can also run on a fixed schedule, keep a little durable state, and link a
+per-user third-party account.
 
 A plugin is a WebAssembly **component** written in Rust against the
 `mydia-plugin-sdk` crate. You write one typed handler function; the SDK turns it
@@ -31,8 +30,7 @@ before the plugin ever runs.
 -   **Have a specific task**
 
     The how-to guides cover [sending notifications](how-to/notifications.md),
-    [reading media and event data](how-to/media-data.md),
-    [building a two-way sync](how-to/two-way-sync.md), and the
+    [reading media and event data](how-to/media-data.md), and the
     [test and reload loop](how-to/test-and-iterate.md).
 
 -   **Need the contract**

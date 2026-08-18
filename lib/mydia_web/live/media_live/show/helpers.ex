@@ -332,12 +332,6 @@ defmodule MydiaWeb.MediaLive.Show.Helpers do
     {:ok, success_count, error_count}
   end
 
-  # Get button text based on watch state
-  def next_episode_button_text(:continue), do: "Continue Watching"
-  def next_episode_button_text(:next), do: "Play Next Episode"
-  def next_episode_button_text(:start), do: "Start Watching"
-  def next_episode_button_text(_), do: "Play"
-
   # Get episode thumbnail from metadata
   def get_episode_thumbnail(episode) do
     case episode.metadata do
@@ -348,76 +342,6 @@ defmodule MydiaWeb.MediaLive.Show.Helpers do
         nil
     end
   end
-
-  # Check if playback feature is enabled
-  def playback_enabled? do
-    Application.get_env(:mydia, :features, [])
-    |> Keyword.get(:playback_enabled, false)
-  end
-
-  @doc """
-  Builds a URL for the Flutter player.
-
-  The Flutter player is served at `/player/` with hash-based routing.
-  The player route pattern is: `/player/#/player/:type/:id?fileId=...&title=...`
-
-  Note: The trailing slash before `#` is required for Flutter web hash routing
-  to work correctly with the base-href configuration.
-
-  ## Parameters
-    - type: "movie" or "episode"
-    - id: The media item or episode ID
-    - opts: Keyword list with optional parameters:
-      - file_id: The media file ID to play (required by the Flutter player)
-      - title: Display title for the player
-
-  ## Examples
-      flutter_player_url("movie", media_item.id, file_id: file.id, title: "Movie Title")
-      flutter_player_url("episode", episode.id, file_id: file.id)
-  """
-  def flutter_player_url(type, id, opts \\ []) do
-    file_id = Keyword.get(opts, :file_id)
-    title = Keyword.get(opts, :title)
-
-    query_params =
-      []
-      |> then(fn params -> if file_id, do: [{"fileId", file_id} | params], else: params end)
-      |> then(fn params -> if title, do: [{"title", title} | params], else: params end)
-
-    query_string =
-      case query_params do
-        [] -> ""
-        params -> "?" <> URI.encode_query(params)
-      end
-
-    # Trailing slash before # is required for Flutter web hash routing
-    "/player/#/player/#{type}/#{id}#{query_string}"
-  end
-
-  @doc """
-  Gets the best file to play from a list of media files.
-  Prefers files with higher resolution.
-  """
-  def get_best_media_file([]), do: nil
-
-  def get_best_media_file(files) do
-    files
-    |> Enum.sort_by(
-      fn file ->
-        resolution_priority(file.resolution)
-      end,
-      :desc
-    )
-    |> List.first()
-  end
-
-  defp resolution_priority(nil), do: 0
-  defp resolution_priority("480p"), do: 1
-  defp resolution_priority("720p"), do: 2
-  defp resolution_priority("1080p"), do: 3
-  defp resolution_priority("2160p"), do: 4
-  defp resolution_priority("4K"), do: 4
-  defp resolution_priority(_), do: 0
 
   # Check if subtitle feature is enabled
   def subtitle_feature_enabled? do
@@ -432,32 +356,6 @@ defmodule MydiaWeb.MediaLive.Show.Helpers do
 
   def maybe_add_opt(opts, _key, nil), do: opts
   def maybe_add_opt(opts, key, value), do: Keyword.put(opts, key, value)
-
-  @doc """
-  Builds a URL for the Flutter player queue playback.
-
-  The Flutter player queue route pattern is: `/player#/player/queue?items=<base64>`
-
-  ## Parameters
-    - items: List of maps with :type, :id, :file_id, :title keys
-             Each item represents a playable media item in the queue
-
-  ## Examples
-      items = [
-        %{type: "movie", id: "abc", file_id: "f1", title: "Movie 1"},
-        %{type: "episode", id: "def", file_id: "f2", title: "S01E01 - Pilot"}
-      ]
-      flutter_queue_player_url(items)
-  """
-  def flutter_queue_player_url([]), do: nil
-
-  def flutter_queue_player_url(items) when is_list(items) do
-    # Encode the queue as base64 JSON to keep URL clean
-    queue_json = Jason.encode!(items)
-    queue_encoded = Base.url_encode64(queue_json)
-
-    "/player#/player/queue?items=#{queue_encoded}"
-  end
 
   def parse_int(value) when is_integer(value), do: value
 

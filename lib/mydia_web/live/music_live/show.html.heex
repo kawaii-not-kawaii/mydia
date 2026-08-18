@@ -48,9 +48,6 @@
         <h1 class="text-3xl font-bold mb-2">{@album.title}</h1>
 
         <div class="flex gap-2 mb-4">
-          <button class="btn btn-primary gap-2" phx-click="play_album">
-            <.icon name="hero-play" class="w-5 h-5" /> Play Album
-          </button>
           <.add_to_playlist_dropdown
             playlists={@playlists}
             album_id={@album.id}

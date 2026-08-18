@@ -105,10 +105,8 @@ defmodule Mydia.MixProject do
     [
       # Ecto migration callbacks (change/0, up/0, down/0) run by the migrator
       {~r/^Mydia\.Repo\.Migrations\./, :_, :_},
-      # Generated reflection/introspection helpers (__absinthe_*__, __schema__, ...)
+      # Generated reflection/introspection helpers (__schema__, __struct__, ...)
       {:_, ~r/^__/, :_},
-      # Absinthe schema + resolvers referenced inside `field`/`resolve` macros
-      {~r/^MydiaWeb\.Schema\./, :_, :_},
       # Phoenix Router generated route helpers and pipelines
       {~r/^MydiaWeb\.Router/, :_, :_},
       # Plug callbacks invoked by the Plug pipeline
@@ -201,9 +199,6 @@ defmodule Mydia.MixProject do
       # HTTP Clients
       {:finch, "~> 0.22"},
       {:req, "~> 0.6"},
-      # WebSocket client for the Flutter dev-server proxy (PlayerDevSocket)
-      {:websockex, "~> 0.5"},
-
       # WASM plugin runtime (wasmtime via Rustler NIF) + pooling
       {:wasmex, "~> 0.14"},
       {:nimble_pool, "~> 1.1"},
@@ -233,18 +228,8 @@ defmodule Mydia.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
 
-      # CORS support for cross-origin API requests (standalone player)
-      {:corsica, "~> 2.1"},
-
-      # Rustler for Libp2p NIF (native crate is on rustler 0.37.2; wasmex needs ~> 0.37.1)
-      {:rustler, "~> 0.37", runtime: false},
-
-      # GraphQL
-      {:absinthe, "~> 1.7"},
-      {:absinthe_plug, "~> 1.5"},
-      {:absinthe_phoenix, "~> 2.0"},
-      {:dataloader, "~> 2.0"},
-      {:absinthe_relay, "~> 1.5"},
+      # Pinned for wasmex, which needs ~> 0.37.1 to build its wasmtime NIF.
+      {:rustler, "~> 0.37", runtime: false, override: true},
 
       # Development & Testing
       {:ex_machina, "~> 2.8", only: :test},
@@ -266,9 +251,6 @@ defmodule Mydia.MixProject do
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      # Delegates to Mix.Tasks.Mydia.Graphql, which writes
-      # priv/graphql/schema.graphql (the player path is a symlink to it).
-      "schema.export": ["mydia.graphql export"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["compile", "tailwind mydia", "esbuild mydia"],

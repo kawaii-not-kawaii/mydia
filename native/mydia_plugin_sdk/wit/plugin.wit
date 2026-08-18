@@ -21,7 +21,7 @@ interface types {
   /// arbitrary per-event metadata bag varies by event type and is carried as a
   /// JSON object string (`metadata-json`, "{}" when empty).
   record event {
-    /// The event type, e.g. "media_item.added", "playback.finished".
+    /// The event type, e.g. "media_item.added", "download.completed".
     event: string,
     category: option<string>,
     severity: option<string>,
@@ -94,63 +94,15 @@ interface types {
     limit: option<u32>,
   }
 
-  /// A per-user watch-state projection (the `playback_progress` namespace).
-  /// Carries everything a sync plugin needs to push a watch without further
-  /// lookups: external ids, episode coordinates, and timestamps.
-  record playback-progress {
-    user-id: string,
-    /// "movie" | "episode".
-    item-type: string,
-    media-item-id: option<string>,
-    episode-id: option<string>,
-    tmdb-id: option<s64>,
-    tvdb-id: option<s64>,
-    imdb-id: option<string>,
-    season-number: option<u32>,
-    episode-number: option<u32>,
-    watched: bool,
-    /// RFC3339; absent when never watched.
-    last-watched-at: option<string>,
-    /// RFC3339; the row's update time, used as the keyset cursor anchor.
-    updated-at: string,
-  }
-
   /// One row of a `list-result`, keyed by the requested namespace.
   variant list-item {
     media-item(media-item),
-    playback-progress(playback-progress),
   }
 
   record list-result {
     items: list<list-item>,
     /// Opaque cursor for the next page; absent when the set is exhausted.
     next-cursor: option<string>,
-  }
-
-  /// Target for `ensure-watched` (U6). External ids are resolved host-side
-  /// through ordered candidates with explicit fallbacks; episode coordinates
-  /// pin an episode within the resolved show. `watched-at` (RFC3339) defaults
-  /// to now when absent.
-  record watch-target {
-    user-id: string,
-    imdb-id: option<string>,
-    tmdb-id: option<s64>,
-    tvdb-id: option<s64>,
-    season-number: option<u32>,
-    episode-number: option<u32>,
-    watched-at: option<string>,
-  }
-
-  /// Outcome of an `ensure-watched` call. Idempotent by contract: re-applying a
-  /// watch reports `already-watched` and emits no event.
-  enum ensure-watched-status {
-    changed,
-    already-watched,
-    not-found,
-  }
-
-  record ensure-watched-result {
-    status: ensure-watched-status,
   }
 
   /// Lifecycle status of a per-user connection.
@@ -196,8 +148,7 @@ interface types {
 /// into the instance.
 interface host {
   use types.{outbound-request, outbound-response, data-request, read-result,
-             list-request, list-result, watch-target, ensure-watched-result,
-             connection, host-error};
+             list-request, list-result, connection, host-error};
 
   /// Outbound HTTP request, subject to the plugin's net:http grant and the SSRF
   /// egress gate. Requires net:http.
@@ -232,11 +183,6 @@ interface host {
   /// scoped to the namespace. Cross-user namespaces are consent-scoped to users
   /// with an active connection to the calling plugin (R21).
   data-list: func(req: list-request) -> result<list-result, host-error>;
-
-  /// Mark an item watched for a user, idempotently, with host-side external-id
-  /// matching. Requires surfaces:write scoped to "playback:watched" and an
-  /// active connection to the target user (R21).
-  ensure-watched: func(target: watch-target) -> result<ensure-watched-result, host-error>;
 
   /// List the plugin's per-user connections (identity + status only, never a
   /// token — R22). Requires users:connections.

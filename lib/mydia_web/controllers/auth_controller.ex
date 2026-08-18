@@ -79,7 +79,7 @@ defmodule MydiaWeb.AuthController do
         # Sign in the user via Guardian, which stores the token in session
         # under the :guardian_default_token key that VerifySession expects.
         # Also store under :guardian_token for backward compatibility with
-        # code that reads that key directly (e.g., logout, Flutter cookie auth).
+        # code that reads that key directly (e.g., logout).
         {:ok, token, _claims} = Guardian.create_token(user)
 
         conn

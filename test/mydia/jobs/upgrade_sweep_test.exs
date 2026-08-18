@@ -6,7 +6,7 @@ defmodule Mydia.Jobs.UpgradeSweepTest do
 
   alias Mydia.Jobs.UpgradeSweep
   alias Mydia.Library.Structs.FileMetadata
-  alias Mydia.Streaming.Codec
+  alias Mydia.Library.Codec
 
   setup do
     original = Application.get_env(:mydia, :runtime_config)

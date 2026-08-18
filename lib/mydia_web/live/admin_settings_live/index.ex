@@ -28,7 +28,7 @@ defmodule MydiaWeb.AdminSettingsLive.Index do
   # `settings` map the clause below expects. Without this clause every
   # typed setting in this screen raised FunctionClauseError on edit, so the
   # database layer was reachable for toggles and selects but not for
-  # anything you type, `streaming.max_transcode_height` included.
+  # anything you type, `downloads.monitor_interval_minutes` included.
   @impl true
   def handle_event(
         "update_setting_form",
@@ -313,7 +313,6 @@ defmodule MydiaWeb.AdminSettingsLive.Index do
       end
 
     metadata = config.metadata || %Mydia.Config.Schema.Metadata{}
-    streaming = config.streaming || %Mydia.Config.Schema.Streaming{}
 
     # Fetch all DB settings in one query to avoid N+1 per-key lookups
     all_db_settings = Settings.list_config_settings() |> Map.new(&{&1.key, &1})
@@ -421,26 +420,6 @@ defmodule MydiaWeb.AdminSettingsLive.Index do
             Settings.config_source(
               "DOWNLOAD_MONITOR_INTERVAL_MINUTES",
               "downloads.monitor_interval_minutes",
-              all_db_settings
-            )
-        }
-      ],
-      "Streaming" => [
-        %{
-          key: "streaming.max_transcode_height",
-          label: "Max Transcode Height",
-          description:
-            "Ceiling in pixels on the output height of any transcode, for example 720. " <>
-              "Empty means no ceiling and a transcode keeps the source resolution, which " <>
-              "a small server may not sustain in realtime for a 4K file. Never upscales, " <>
-              "and never applies when the file is streamed without re-encoding.",
-          type: :integer,
-          value: streaming.max_transcode_height,
-          placeholder: "no limit",
-          source:
-            Settings.config_source(
-              "MAX_TRANSCODE_HEIGHT",
-              "streaming.max_transcode_height",
               all_db_settings
             )
         }
@@ -599,7 +578,6 @@ defmodule MydiaWeb.AdminSettingsLive.Index do
       "Media" -> :media
       "Metadata" -> :metadata
       "Downloads" -> :downloads
-      "Streaming" -> :streaming
       "Crash Reporting" -> :crash_reporting
       "Feedback" -> :feedback
       "Notifications" -> :notifications

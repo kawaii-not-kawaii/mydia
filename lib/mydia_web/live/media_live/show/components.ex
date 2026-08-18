@@ -13,9 +13,6 @@ defmodule MydiaWeb.MediaLive.Show.Components do
   Hero section with backdrop image, poster, and quick action buttons.
   """
   attr :media_item, :map, required: true
-  attr :playback_enabled, :boolean, required: true
-  attr :next_episode, :map, default: nil
-  attr :next_episode_state, :atom, default: nil
   attr :auto_searching, :boolean, required: true
   attr :downloads_with_status, :list, required: true
   attr :quality_profiles, :list, required: true
@@ -57,45 +54,6 @@ defmodule MydiaWeb.MediaLive.Show.Components do
 
       <%!-- Quick Actions --%>
       <div class="flex flex-col gap-2">
-        <%!-- Play Button (for content with media files) --%>
-        <%= if @playback_enabled && @media_item.type == "movie" && length(@media_item.media_files) > 0 do %>
-          <% best_file = get_best_media_file(@media_item.media_files) %>
-          <a
-            href={
-              flutter_player_url("movie", @media_item.id,
-                file_id: best_file.id,
-                title: @media_item.title
-              )
-            }
-            class="btn btn-primary btn-block"
-          >
-            <.icon name="hero-play-circle-solid" class="w-5 h-5" /> Play Movie
-          </a>
-
-          <div class="divider my-1"></div>
-        <% end %>
-
-        <%!-- Play Next Button (for TV shows with next episode) --%>
-        <%= if @playback_enabled && @media_item.type == "tv_show" && @next_episode do %>
-          <% next_best_file = get_best_media_file(@next_episode.media_files) %>
-          <%= if next_best_file do %>
-            <a
-              href={
-                flutter_player_url("episode", @next_episode.id,
-                  file_id: next_best_file.id,
-                  title: @next_episode.title
-                )
-              }
-              class="btn btn-primary btn-block"
-            >
-              <.icon name="hero-play-circle-solid" class="w-5 h-5" />
-              {next_episode_button_text(@next_episode_state)}
-            </a>
-
-            <div class="divider my-1"></div>
-          <% end %>
-        <% end %>
-
         <div class="grid grid-cols-2 gap-2">
           <div class="col-span-2">
             <div class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-1">
@@ -500,7 +458,6 @@ defmodule MydiaWeb.MediaLive.Show.Components do
   attr :auto_searching_season, :any, default: nil
   attr :rescanning_season, :any, default: nil
   attr :auto_searching_episode, :any, default: nil
-  attr :playback_enabled, :boolean, required: true
   attr :transcode_jobs, :map, default: %{}
   attr :segment_statuses, :map, default: %{}
   attr :segment_detection_available, :boolean, default: true
@@ -689,21 +646,6 @@ defmodule MydiaWeb.MediaLive.Show.Components do
                               <.icon name={episode_status_icon(status)} class="w-3 h-3" />
                             </span>
                           </div>
-                          <%= if @playback_enabled && has_files do %>
-                            <% episode_best_file = get_best_media_file(episode.media_files) %>
-                            <a
-                              href={
-                                flutter_player_url("episode", episode.id,
-                                  file_id: episode_best_file.id,
-                                  title: episode.title
-                                )
-                              }
-                              class="btn btn-success btn-sm btn-square"
-                              title="Play"
-                            >
-                              <.icon name="hero-play-solid" class="w-4 h-4" />
-                            </a>
-                          <% end %>
                           <button
                             type="button"
                             phx-click="auto_search_episode"
@@ -757,7 +699,6 @@ defmodule MydiaWeb.MediaLive.Show.Components do
                           <.episode_file_row
                             file={file}
                             episode={episode}
-                            playback_enabled={@playback_enabled}
                             transcode_jobs={Map.get(@transcode_jobs, file.id, [])}
                           />
                         </div>
@@ -779,7 +720,6 @@ defmodule MydiaWeb.MediaLive.Show.Components do
   """
   attr :file, :map, required: true
   attr :episode, :map, required: true
-  attr :playback_enabled, :boolean, required: true
   attr :transcode_jobs, :list, default: []
 
   def episode_file_row(assigns) do
@@ -846,17 +786,6 @@ defmodule MydiaWeb.MediaLive.Show.Components do
               </li>
             </ul>
           </div>
-        <% end %>
-        <%= if @playback_enabled do %>
-          <a
-            href={
-              flutter_player_url("episode", @episode.id, file_id: @file.id, title: @episode.title)
-            }
-            class="btn btn-ghost btn-xs btn-square"
-            title="Play this file"
-          >
-            <.icon name="hero-play-solid" class="w-4 h-4" />
-          </a>
         <% end %>
         <button
           type="button"

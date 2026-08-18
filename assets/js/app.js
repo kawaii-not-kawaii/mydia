@@ -24,13 +24,10 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import { hooks as colocatedHooks } from "phoenix-colocated/mydia";
 import topbar from "../vendor/topbar";
-import VideoPlayer from "./hooks/video_player";
-import MusicPlayer from "./hooks/music_player";
 import PlexOAuth from "./hooks/plex_oauth";
 import DockNav from "./hooks/dock_nav";
 // Alpine.js for reactive UI components
 import Alpine from "alpinejs";
-import { videoPlayer } from "./alpine_components/video_player";
 
 // Theme toggle hook
 const ThemeToggle = {
@@ -150,173 +147,6 @@ const DownloadFile = {
   },
 };
 
-// Sprite preview hook - animates through sprite sheet frames on hover
-const SpritePreview = {
-  mounted() {
-    this.spriteUrl = this.el.dataset.spriteUrl;
-    this.spriteWidth = parseInt(this.el.dataset.spriteWidth) || 160;
-    this.spriteHeight = parseInt(this.el.dataset.spriteHeight) || 90;
-    this.spriteColumns = parseInt(this.el.dataset.spriteColumns) || 10;
-    this.currentFrame = 0;
-    this.animationId = null;
-    this.spriteImage = null;
-    this.isLoaded = false;
-    this.frameInterval = 350; // ms between frames
-
-    this.canvas = this.el.querySelector("[data-sprite-canvas]");
-    this.progressBar = this.el.querySelector("[data-sprite-progress]");
-
-    if (!this.canvas || !this.spriteUrl) return;
-
-    this.ctx = this.canvas.getContext("2d");
-
-    // Preload sprite image
-    this.loadSprite();
-
-    // Event listeners
-    this.el.addEventListener("mouseenter", () => this.startAnimation());
-    this.el.addEventListener("mouseleave", () => this.stopAnimation());
-  },
-
-  loadSprite() {
-    this.spriteImage = new Image();
-    this.spriteImage.crossOrigin = "anonymous";
-    this.spriteImage.onload = () => {
-      this.isLoaded = true;
-      // Calculate total frames based on sprite sheet dimensions
-      const cols = Math.floor(this.spriteImage.width / this.spriteWidth);
-      const rows = Math.floor(this.spriteImage.height / this.spriteHeight);
-      this.totalFrames = cols * rows;
-      this.spriteColumns = cols;
-    };
-    this.spriteImage.src = this.spriteUrl;
-  },
-
-  startAnimation() {
-    if (!this.isLoaded || this.animationId) return;
-
-    this.currentFrame = 0;
-    this.drawFrame();
-    this.animationId = setInterval(() => {
-      this.currentFrame = (this.currentFrame + 1) % this.totalFrames;
-      this.drawFrame();
-    }, this.frameInterval);
-  },
-
-  stopAnimation() {
-    if (this.animationId) {
-      clearInterval(this.animationId);
-      this.animationId = null;
-    }
-    this.currentFrame = 0;
-  },
-
-  drawFrame() {
-    if (!this.ctx || !this.spriteImage || !this.isLoaded) return;
-
-    // Set canvas size to match displayed size
-    const rect = this.canvas.getBoundingClientRect();
-    this.canvas.width = rect.width;
-    this.canvas.height = rect.height;
-
-    // Calculate source position in sprite sheet
-    const col = this.currentFrame % this.spriteColumns;
-    const row = Math.floor(this.currentFrame / this.spriteColumns);
-    const sx = col * this.spriteWidth;
-    const sy = row * this.spriteHeight;
-
-    // Draw frame scaled to canvas size
-    this.ctx.drawImage(
-      this.spriteImage,
-      sx, sy, this.spriteWidth, this.spriteHeight,
-      0, 0, this.canvas.width, this.canvas.height
-    );
-
-    // Update progress bar
-    if (this.progressBar) {
-      const progress = ((this.currentFrame + 1) / this.totalFrames) * 100;
-      this.progressBar.style.width = `${progress}%`;
-    }
-  },
-
-  destroyed() {
-    this.stopAnimation();
-  }
-};
-
-// Video preview hook - plays video preview on hover
-const VideoPreview = {
-  mounted() {
-    this.previewUrl = this.el.dataset.previewUrl;
-    this.video = this.el.querySelector("[data-preview-video]");
-    this.thumbnail = this.el.querySelector("[data-preview-thumbnail]");
-    this.progressBar = this.el.querySelector("[data-preview-progress]");
-
-    if (!this.video || !this.previewUrl) return;
-
-    // Set video source
-    this.video.src = this.previewUrl;
-    this.video.muted = true;
-    this.video.loop = true;
-    this.video.playsInline = true;
-    this.video.preload = "metadata";
-
-    // Update progress bar during playback
-    this.video.addEventListener("timeupdate", () => {
-      if (this.progressBar && this.video.duration) {
-        const progress = (this.video.currentTime / this.video.duration) * 100;
-        this.progressBar.style.width = `${progress}%`;
-      }
-    });
-
-    // Event listeners for hover
-    this.el.addEventListener("mouseenter", () => this.startPreview());
-    this.el.addEventListener("mouseleave", () => this.stopPreview());
-  },
-
-  startPreview() {
-    if (!this.video) return;
-
-    // Show video, hide thumbnail
-    if (this.thumbnail) {
-      this.thumbnail.style.opacity = "0";
-    }
-    this.video.style.opacity = "1";
-
-    // Reset and play
-    this.video.currentTime = 0;
-    this.video.play().catch(() => {
-      // Autoplay might be blocked, ignore errors
-    });
-  },
-
-  stopPreview() {
-    if (!this.video) return;
-
-    // Pause and reset
-    this.video.pause();
-    this.video.currentTime = 0;
-
-    // Hide video, show thumbnail
-    this.video.style.opacity = "0";
-    if (this.thumbnail) {
-      this.thumbnail.style.opacity = "1";
-    }
-
-    // Reset progress bar
-    if (this.progressBar) {
-      this.progressBar.style.width = "0%";
-    }
-  },
-
-  destroyed() {
-    if (this.video) {
-      this.video.pause();
-      this.video.src = "";
-    }
-  }
-};
-
 // Sticky toolbar hook - shows fixed toolbar when original scrolls out of view
 const StickyToolbar = {
   mounted() {
@@ -377,9 +207,6 @@ const StickyToolbar = {
 // Initialize Alpine.js FIRST (before LiveView)
 window.Alpine = Alpine;
 
-// Register Alpine components
-Alpine.data("videoPlayer", videoPlayer);
-
 // Start Alpine before LiveView connects (critical for x-cloak and x-show to work)
 Alpine.start();
 
@@ -433,13 +260,9 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
     ...colocatedHooks,
     ThemeToggle,
-    VideoPlayer,
-    MusicPlayer,
     PathAutocomplete,
     DownloadFile,
     StickyToolbar,
-    SpritePreview,
-    VideoPreview,
     PlexOAuth,
     DockNav,
     AddDirectUrl,

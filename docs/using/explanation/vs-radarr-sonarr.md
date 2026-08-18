@@ -55,12 +55,6 @@ cannot declare an instance's download clients in a Compose file and have them
 exist on first boot. Mydia can be described declaratively *and* changed while
 running, which is the subject of its own [page](configuration-model.md).
 
-**Remote access without configuring anything.** Mydia's player app reaches an
-instance through an encrypted peer-to-peer connection with no port forwarding,
-VPN, or dynamic DNS. The *arr applications have no equivalent because they have
-no player; they are not trying to solve this problem. See
-[how remote access works](remote-access.md).
-
 ## Where Radarr and Sonarr are better
 
 This section is longer than the marketing instinct would like. It is also the
@@ -127,8 +121,7 @@ Useful as a summary, but the sections above are where the actual argument is.
 | **Automatic upgrades** | Yes (bounded daily sweep) | Yes | Yes |
 | **Media server integration** | Plex, Jellyfin | Plex, Kodi, Jellyfin | Plex, Kodi, Jellyfin |
 | **List import** | Experimental | Yes | Yes |
-| **Native playback** | Experimental (player app) | No | No |
-| **Remote access (p2p)** | Experimental | No | No |
+| **Native playback** | No | No | No |
 | **Technology** | Elixir, Phoenix LiveView | .NET, React | .NET, React |
 | **Maturity** | Early development | Production-ready | Production-ready |
 
@@ -137,8 +130,8 @@ Useful as a summary, but the sections above are where the actual argument is.
 **Mydia is a reasonable choice if** you want movies and TV in one place, other
 people in your household need to request things, you want SSO without building
 it out of proxy configuration, you would like to describe your instance in a file
-and still change it at runtime, or you want the player app. It is also a
-reasonable choice if you enjoy being early to something and reporting bugs.
+and still change it at runtime. It is also a reasonable choice if you enjoy
+being early to something and reporting bugs.
 
 **Radarr and Sonarr are the better choice if** your release selection or your
 upgrade rules depend on custom format scoring, indexer reliability is the thing

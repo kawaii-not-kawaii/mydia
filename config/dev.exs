@@ -59,8 +59,7 @@ config :mydia, MydiaWeb.Endpoint,
   secret_key_base: "VlPUd2fbnWjh6Di+7SGc2SSXpNhI0hN766FFAlct65wU5ARyiGvK9r3TqSqKyu0K",
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:mydia, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:mydia, ~w(--watch)]},
-    flutter: {MydiaWeb.FlutterWatcher, :start_link, [[]]}
+    tailwind: {Tailwind, :install_and_run, [:mydia, ~w(--watch)]}
   ]
 
 # ## SSL Support
@@ -307,19 +306,6 @@ config :mydia, Mydia.Auth.Guardian,
   issuer: "mydia",
   secret_key: guardian_secret,
   ttl: {30, :days}
-
-config :mydia, Mydia.RemoteAccess.MediaToken,
-  issuer: "mydia",
-  secret_key: guardian_secret,
-  ttl: {24, :hours}
-
-# Relay tunnel shared secret for development
-# This secret is used to sign internal relay tunnel requests with HMAC-SHA256
-config :mydia, :relay_tunnel_secret, "dev-relay-tunnel-secret-not-for-production"
-
-# P2P keypair path for persistent node identity in development
-# This ensures the node ID stays the same across restarts so paired devices can reconnect
-config :mydia, :p2p_keypair_path, "priv/p2p_keypair.bin"
 
 # Ueberauth OIDC configuration for development
 # These are read from environment variables set in Docker

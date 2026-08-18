@@ -15,7 +15,7 @@ defmodule Mydia.Upgrades.Attrs do
   `Mydia.Library.apply_analysis/2` does not store the analyzer's strings
   verbatim in every column. `resolution` and `hdr_format` land raw ("4K",
   "Dolby Vision"), but `codec` and `audio_codec` are written through
-  `Mydia.Streaming.Codec`, which normalizes them for streaming-compatibility
+  `Mydia.Library.Codec`, which normalizes them for streaming-compatibility
   checks: "H.264 (High)" becomes "h264", "HEVC (Main 10)" becomes "hevc", and
   - lossily for our purposes - "DD+ 5.1" becomes "ac3" and "TrueHD Atmos"
   becomes "truehd", discarding the channel layout entirely.
@@ -84,7 +84,7 @@ defmodule Mydia.Upgrades.Attrs do
     "mpeg-2" => "mpeg2",
     "xvid" => "xvid",
     "divx" => "divx",
-    # Mydia.Streaming.Codec collapses Xvid and DivX (and any other MPEG-4
+    # Mydia.Library.Codec collapses Xvid and DivX (and any other MPEG-4
     # Part 2 spelling) onto "mpeg4" before the column is written, so that is
     # the form every analyzed file actually holds. The two are
     # indistinguishable by then; "xvid" is the more common of the pair and

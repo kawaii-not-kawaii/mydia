@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: iroh-relay
-  labels:
-    app.kubernetes.io/name: iroh-relay
-    app.kubernetes.io/part-of: mydia

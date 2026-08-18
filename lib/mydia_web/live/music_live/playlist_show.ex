@@ -24,41 +24,6 @@ defmodule MydiaWeb.MusicLive.PlaylistShow do
   end
 
   @impl true
-  def handle_event("play_playlist", _params, socket) do
-    tracks = prepare_tracks_for_player(socket.assigns.playlist.playlist_tracks)
-
-    if tracks != [] do
-      Phoenix.PubSub.broadcast(Mydia.PubSub, "music_player", {:play_tracks, tracks, 0})
-      {:noreply, put_flash(socket, :info, "Starting playback")}
-    else
-      {:noreply, put_flash(socket, :error, "No playable tracks in playlist")}
-    end
-  end
-
-  def handle_event("shuffle_playlist", _params, socket) do
-    tracks = prepare_tracks_for_player(socket.assigns.playlist.playlist_tracks)
-
-    if tracks != [] do
-      shuffled_tracks = Enum.shuffle(tracks)
-      Phoenix.PubSub.broadcast(Mydia.PubSub, "music_player", {:play_tracks, shuffled_tracks, 0})
-      {:noreply, put_flash(socket, :info, "Shuffling playlist")}
-    else
-      {:noreply, put_flash(socket, :error, "No playable tracks in playlist")}
-    end
-  end
-
-  def handle_event("play_track", %{"index" => index_str}, socket) do
-    index = String.to_integer(index_str)
-    tracks = prepare_tracks_for_player(socket.assigns.playlist.playlist_tracks)
-
-    if tracks != [] do
-      Phoenix.PubSub.broadcast(Mydia.PubSub, "music_player", {:play_tracks, tracks, index})
-      {:noreply, socket}
-    else
-      {:noreply, put_flash(socket, :error, "Track not playable")}
-    end
-  end
-
   def handle_event("remove_track", %{"playlist-track-id" => playlist_track_id}, socket) do
     playlist_track = Music.get_playlist_track!(playlist_track_id)
 
@@ -137,39 +102,6 @@ defmodule MydiaWeb.MusicLive.PlaylistShow do
          socket
          |> assign(:show_delete_modal, false)
          |> put_flash(:error, "Failed to delete playlist")}
-    end
-  end
-
-  defp prepare_tracks_for_player(playlist_tracks) do
-    playlist_tracks
-    |> Enum.map(fn pt ->
-      track = pt.track
-      file_id = get_file_id(track)
-
-      %{
-        "title" => track.title,
-        "artist_name" => (track.artist && track.artist.name) || "Unknown Artist",
-        "cover_url" => get_cover_url(track),
-        "file_id" => file_id,
-        "duration" => track.duration,
-        "url" => if(file_id, do: "/api/v1/stream/file/#{file_id}", else: nil)
-      }
-    end)
-    |> Enum.filter(&(&1["file_id"] != nil))
-  end
-
-  defp get_file_id(track) do
-    case track.music_files do
-      [file | _] -> file.id
-      _ -> nil
-    end
-  end
-
-  defp get_cover_url(track) do
-    if track.album && is_binary(track.album.cover_url) && track.album.cover_url != "" do
-      track.album.cover_url
-    else
-      "/images/no-poster.svg"
     end
   end
 

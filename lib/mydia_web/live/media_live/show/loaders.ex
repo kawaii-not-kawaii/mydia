@@ -67,23 +67,6 @@ defmodule MydiaWeb.MediaLive.Show.Loaders do
 
   defp metadata_enriched_event?(_event), do: false
 
-  # Load next episode to watch for TV shows
-  def load_next_episode(media_item, socket) do
-    if media_item.type == "tv_show" do
-      user_id = socket.assigns.current_user.id
-
-      case Mydia.Playback.get_next_episode(media_item.id, user_id) do
-        {:continue, episode} -> {episode, :continue}
-        {:next, episode} -> {episode, :next}
-        {:start, episode} -> {episode, :start}
-        :all_watched -> {nil, :all_watched}
-        nil -> {nil, nil}
-      end
-    else
-      {nil, nil}
-    end
-  end
-
   # Load transcode jobs for all media files in a media item
   # Returns a map of media_file_id => list of transcode jobs
   def load_transcode_jobs(media_item) do

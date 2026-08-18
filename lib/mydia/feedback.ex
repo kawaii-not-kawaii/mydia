@@ -45,12 +45,7 @@ defmodule Mydia.Feedback do
 
   defp get_attr(attrs, key), do: Map.get(attrs, key) || Map.get(attrs, Atom.to_string(key))
 
-  defp instance_id do
-    case Mydia.RemoteAccess.get_config() do
-      nil -> nil
-      config -> config.instance_id
-    end
-  end
+  defp instance_id, do: nil
 
   defp parse_boolean(value) when is_boolean(value), do: value
   defp parse_boolean("true"), do: true

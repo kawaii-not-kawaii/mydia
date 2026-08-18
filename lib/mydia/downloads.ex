@@ -563,13 +563,6 @@ defmodule Mydia.Downloads do
   @spec delete_all_completed_jobs() :: :ok
   defdelegate delete_all_completed_jobs(), to: Mydia.Downloads.Transcoding
 
-  @doc """
-  Deletes all streaming jobs.
-  Should be called on startup to clean up zombie records.
-  """
-  @spec delete_all_streaming_jobs() :: {non_neg_integer(), nil | [term()]}
-  defdelegate delete_all_streaming_jobs(), to: Mydia.Downloads.Transcoding
-
   # ── Private (shared helpers used by test_connection) ──────────────────
 
   defp config_to_map(config) do

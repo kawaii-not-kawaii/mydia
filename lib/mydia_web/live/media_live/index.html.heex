@@ -366,13 +366,9 @@
                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
                   />
-                  <%!-- Progress indicators --%>
-                  <% progress = get_progress(item) %>
-                  <.progress_bar :if={progress} progress={progress} class="hide-on-select" />
-                  <%!-- Playback status and quality, stacked in one top-right container --%>
+                  <%!-- Quality badge --%>
                   <.poster_badges
                     id={"poster-badges-#{item.id}"}
-                    progress={progress}
                     quality={get_quality_badge(item)}
                     class="hide-on-select"
                   />
@@ -490,19 +486,6 @@
                     size="xs"
                     class="flex-shrink-0"
                   />
-                <% end %>
-                <%!-- Progress indicator for list view --%>
-                <% progress = get_progress(item) %>
-                <%= if progress do %>
-                  <%= if progress.watched do %>
-                    <span class="badge badge-success badge-sm gap-1 flex-shrink-0">
-                      <.icon name="hero-check" class="w-3 h-3" /> Watched
-                    </span>
-                  <% else %>
-                    <span class="badge badge-primary badge-sm flex-shrink-0">
-                      {round(progress.completion_percentage)}%
-                    </span>
-                  <% end %>
                 <% end %>
               </div>
             </div>

@@ -1,6 +1,6 @@
 defmodule Mydia.Library.GeneratedMedia do
   @moduledoc """
-  Storage module for generated media content (thumbnails, sprites, previews).
+  Storage module for generated media content (cover thumbnails, fingerprints).
 
   This module manages the storage of generated content using content-addressable
   storage based on MD5 checksums. Files are stored in a tiered directory structure
@@ -19,9 +19,6 @@ defmodule Mydia.Library.GeneratedMedia do
   ## Content Types
 
   - `:cover` - Thumbnail/cover images (JPG)
-  - `:sprite` - Sprite sheets for scrubber timeline (JPG)
-  - `:vtt` - WebVTT files mapping timestamps to sprite coordinates
-  - `:preview` - Preview video clips (MP4)
   - `:fingerprint` - Cached Chromaprint audio fingerprints (FPR)
 
   ## Configuration
@@ -30,14 +27,11 @@ defmodule Mydia.Library.GeneratedMedia do
   Defaults to `/data/generated` in production (Docker) or `priv/generated` in dev.
   """
 
-  @type content_type :: :cover | :sprite | :vtt | :preview | :fingerprint
+  @type content_type :: :cover | :fingerprint
   @type checksum :: String.t()
 
   @extensions %{
     cover: ".jpg",
-    sprite: ".jpg",
-    vtt: ".vtt",
-    preview: ".mp4",
     fingerprint: ".fpr"
   }
 
@@ -56,7 +50,7 @@ defmodule Mydia.Library.GeneratedMedia do
   structure, and writes the file. Returns the checksum on success.
 
   ## Parameters
-    - `type` - The content type (`:cover`, `:sprite`, `:vtt`, `:preview`, `:fingerprint`)
+    - `type` - The content type (`:cover`, `:fingerprint`)
     - `content` - Binary content to store
 
   ## Returns
@@ -221,9 +215,6 @@ defmodule Mydia.Library.GeneratedMedia do
   end
 
   defp type_directory(:cover), do: "covers"
-  defp type_directory(:sprite), do: "sprites"
-  defp type_directory(:vtt), do: "vtt"
-  defp type_directory(:preview), do: "previews"
   defp type_directory(:fingerprint), do: "fingerprints"
 
   defp compute_checksum(content) do

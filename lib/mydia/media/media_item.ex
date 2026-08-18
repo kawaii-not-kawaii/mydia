@@ -32,7 +32,6 @@ defmodule Mydia.Media.MediaItem do
           media_files: [Mydia.Library.MediaFile.t()] | Ecto.Association.NotLoaded.t(),
           downloads: [Mydia.Downloads.Download.t()] | Ecto.Association.NotLoaded.t(),
           media_requests: [Mydia.Media.MediaRequest.t()] | Ecto.Association.NotLoaded.t(),
-          playback_progress: [Mydia.Playback.Progress.t()] | Ecto.Association.NotLoaded.t(),
           inserted_at: DateTime.t(),
           updated_at: DateTime.t()
         }
@@ -70,7 +69,6 @@ defmodule Mydia.Media.MediaItem do
     has_many :media_files, Mydia.Library.MediaFile
     has_many :downloads, Mydia.Downloads.Download
     has_many :media_requests, Mydia.Media.MediaRequest
-    has_many :playback_progress, Mydia.Playback.Progress
 
     timestamps(type: :utc_datetime)
   end

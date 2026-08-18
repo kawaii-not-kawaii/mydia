@@ -64,7 +64,7 @@ defmodule Mydia.Plugins.Dispatcher do
 
   def handle_info(_other, state), do: {:noreply, state}
 
-  # The event's origin (e.g. "plugin:simkl_sync", "sync:plex", "player") lives in
+  # The event's origin (e.g. "plugin:<slug>", "sync:plex") lives in
   # its metadata bag. Tolerant of both string and atom keys since events may be
   # built in either shape across the codebase.
   defp event_origin(%{metadata: %{} = meta}), do: meta["origin"] || meta[:origin]

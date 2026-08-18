@@ -13,7 +13,7 @@ defmodule Mydia.Events.PresentationTest do
       types = Presentation.known_types()
       refute types == []
 
-      for namespace <- ~w(media_item media_file download job search plugin playback) do
+      for namespace <- ~w(media_item media_file download job search plugin) do
         assert Enum.any?(types, &String.starts_with?(&1, "#{namespace}.")),
                "no registered type starts with #{namespace}."
       end

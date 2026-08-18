@@ -127,16 +127,6 @@ defmodule MydiaWeb.AdminSettingsLiveTest do
       refute has_element?(view, "input[phx-value-key='flaresolverr.url']")
     end
 
-    test "offers the transcode height ceiling", %{view: view} do
-      # The escape hatch for an operator whose hardware cannot encode a 4K
-      # file in realtime. It shipped once as a compile-time key in
-      # config/config.exs, reachable only by rebuilding the image.
-      assert has_element?(
-               view,
-               "input[phx-value-key='streaming.max_transcode_height']"
-             )
-    end
-
     test "persists a typed setting instead of crashing on blur", %{view: view} do
       # `phx-blur` sends the element's value and its phx-value-* metadata, not
       # a `settings` map. Every typed setting in this screen used to raise
@@ -144,14 +134,14 @@ defmodule MydiaWeb.AdminSettingsLiveTest do
       # toggles but not for anything an operator types.
       html =
         view
-        |> element("input[phx-value-key='streaming.max_transcode_height']")
-        |> render_blur(%{"value" => "720"})
+        |> element("input[phx-value-key='downloads.monitor_interval_minutes']")
+        |> render_blur(%{"value" => "7"})
 
       assert html =~ "Setting updated successfully"
 
-      setting = Settings.get_config_setting_by_key("streaming.max_transcode_height")
-      assert setting.value == "720"
-      assert setting.category == :streaming
+      setting = Settings.get_config_setting_by_key("downloads.monitor_interval_minutes")
+      assert setting.value == "7"
+      assert setting.category == :downloads
     end
 
     test "blurring an unchanged field writes nothing", %{view: view} do

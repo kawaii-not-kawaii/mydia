@@ -12,7 +12,6 @@ defmodule MydiaWeb.AdminSystemLive.Components do
   attr :download_clients_count, :integer, required: true
   attr :indexers_count, :integer, required: true
   attr :stuck_upgrades, :integer, required: true
-  attr :active_sessions, :list, required: true
   attr :active_jobs, :list, required: true
   attr :recent_activity, :list, required: true
 
@@ -197,15 +196,11 @@ defmodule MydiaWeb.AdminSystemLive.Components do
               <.icon name="hero-bolt" class="w-5 h-5 text-primary" /> Active
             </h3>
             <span class="badge badge-sm badge-ghost">
-              {length(@active_sessions) + length(@active_jobs)}
+              {length(@active_jobs)}
             </span>
           </div>
 
-          <% active_items =
-            Enum.map(@active_sessions, fn s -> {:session, s} end) ++
-              Enum.map(@active_jobs, fn j -> {:job, j} end)
-
-          capped_items = Enum.take(active_items, 20) %>
+          <% capped_items = Enum.take(@active_jobs, 20) %>
           <%= if capped_items == [] do %>
             <div class="flex-1 flex flex-col items-center justify-center p-8 text-base-content/50">
               <.icon name="hero-bolt" class="w-12 h-12 mb-2 opacity-20" />
@@ -214,13 +209,8 @@ defmodule MydiaWeb.AdminSystemLive.Components do
           <% else %>
             <div class="overflow-y-auto max-h-[500px] pr-1 -mr-1">
               <div class="space-y-2">
-                <%= for item <- capped_items do %>
-                  <%= case item do %>
-                    <% {:session, session} -> %>
-                      <.active_session_card session={session} />
-                    <% {:job, job} -> %>
-                      <.active_job_card job={job} />
-                  <% end %>
+                <%= for job <- capped_items do %>
+                  <.active_job_card job={job} />
                 <% end %>
               </div>
             </div>
@@ -254,11 +244,7 @@ defmodule MydiaWeb.AdminSystemLive.Components do
             <div class="overflow-y-auto max-h-[500px] pr-1 -mr-1">
               <div class="space-y-0 divide-y divide-base-300 bg-base-100 rounded-box border border-base-300">
                 <%= for item <- @recent_activity do %>
-                  <%= if item.type == :transcode_job do %>
-                    <.recent_job_card job={item.data} />
-                  <% else %>
-                    <.recent_watch_card progress={item.data} />
-                  <% end %>
+                  <.recent_job_card job={item.data} />
                 <% end %>
               </div>
             </div>
@@ -272,38 +258,6 @@ defmodule MydiaWeb.AdminSystemLive.Components do
   # ============================================================================
   # Activity Sub-Components
   # ============================================================================
-
-  attr :session, :map, required: true
-
-  defp active_session_card(assigns) do
-    ~H"""
-    <div class="card bg-base-100 shadow-sm border border-base-300">
-      <div class="card-body p-3 flex-row items-center gap-3">
-        <div class="avatar placeholder">
-          <div class="bg-neutral text-neutral-content rounded-full w-10">
-            <span class="text-sm uppercase">
-              {String.slice(user_label(@session.user), 0, 2)}
-            </span>
-          </div>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="font-medium text-sm truncate" title={@session.media_title}>
-            {@session.media_title}
-          </div>
-          <div class="text-xs opacity-60 truncate">
-            {@session.episode_info || "Movie"}
-          </div>
-        </div>
-        <span class={[
-          "badge badge-xs badge-outline",
-          if(@session.mode == :transcode, do: "badge-warning", else: "badge-success")
-        ]}>
-          {if @session.mode == :transcode, do: "Transcode", else: "Direct"}
-        </span>
-      </div>
-    </div>
-    """
-  end
 
   attr :job, :map, required: true
 
@@ -324,14 +278,7 @@ defmodule MydiaWeb.AdminSystemLive.Components do
             <% end %>
           </div>
           <div class="flex items-center gap-1">
-            <%= cond do %>
-              <% @job.type == "direct" -> %>
-                <span class="badge badge-xs badge-success" title="Direct Play">Direct</span>
-              <% @job.type == "stream" -> %>
-                <span class="badge badge-xs badge-info" title="Streaming">Stream</span>
-              <% true -> %>
-                <span class="badge badge-xs badge-ghost" title="Download">DL</span>
-            <% end %>
+            <span class="badge badge-xs badge-ghost" title="Download">DL</span>
             <span
               class={[
                 "badge badge-xs",
@@ -437,72 +384,6 @@ defmodule MydiaWeb.AdminSystemLive.Components do
     """
   end
 
-  attr :progress, :map, required: true
-
-  defp recent_watch_card(assigns) do
-    poster_path =
-      if assigns.progress.media_item && assigns.progress.media_item.metadata,
-        do: assigns.progress.media_item.metadata.poster_path
-
-    title =
-      cond do
-        assigns.progress.episode && assigns.progress.media_item ->
-          ep = assigns.progress.episode
-          "#{assigns.progress.media_item.title} - S#{ep.season_number}E#{ep.episode_number}"
-
-        assigns.progress.media_item ->
-          assigns.progress.media_item.title
-
-        true ->
-          "Unknown Media"
-      end
-
-    user = assigns.progress.user
-
-    assigns =
-      assigns
-      |> assign(:poster_path, poster_path)
-      |> assign(:title, title)
-      |> assign(:username, user_label(user))
-      |> assign(:avatar_url, user && user.avatar_url)
-
-    ~H"""
-    <div class="p-3 flex items-center gap-3 hover:bg-base-200/50 transition-colors">
-      <%= if @poster_path do %>
-        <div class="avatar">
-          <div class="w-8 rounded">
-            <img src={build_image_url(@poster_path)} alt="Poster" />
-          </div>
-        </div>
-      <% else %>
-        <div class="avatar placeholder">
-          <div class="bg-base-300 text-base-content rounded-full w-8">
-            <span class="text-xs">
-              {@username |> String.slice(0, 1) |> String.upcase()}
-            </span>
-          </div>
-        </div>
-      <% end %>
-      <div class="flex-1 min-w-0">
-        <div class="text-sm font-medium truncate" title={@title}>{@title}</div>
-        <div class="text-xs opacity-50 flex items-center gap-1">
-          <%= if @avatar_url do %>
-            <div class="avatar">
-              <div class="w-4 rounded-full">
-                <img src={@avatar_url} alt={@username} />
-              </div>
-            </div>
-          <% end %>
-          <span>{@username}</span>
-        </div>
-      </div>
-      <div class="text-xs opacity-40 whitespace-nowrap">
-        {relative_time(@progress.last_watched_at)}
-      </div>
-    </div>
-    """
-  end
-
   defp transcode_job_title(job) do
     cond do
       job.media_file.episode && job.media_file.episode.media_item ->
@@ -530,11 +411,6 @@ defmodule MydiaWeb.AdminSystemLive.Components do
   defp user_label(%{username: username}) when is_binary(username) and username != "", do: username
   defp user_label(%{email: email}) when is_binary(email) and email != "", do: email
   defp user_label(_), do: "Unknown"
-
-  # Helper for image URLs
-  defp build_image_url(nil), do: nil
-  defp build_image_url(path) when is_binary(path), do: ImageUrl.image_url(path, "w92")
-  defp build_image_url(_), do: nil
 
   # Helper for file size formatting
   defp format_size(nil), do: "-"

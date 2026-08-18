@@ -31,7 +31,7 @@ defmodule Mydia.Upgrades.ComparatorTest do
 
   # A real 4K HDR file exactly as Mydia.Library.apply_analysis/2 stores one:
   # resolution and hdr_format land raw from the analyzer, while codec and
-  # audio_codec go through Mydia.Streaming.Codec first ("HEVC (Main 10)" ->
+  # audio_codec go through Mydia.Library.Codec first ("HEVC (Main 10)" ->
   # "hevc", "DD+ 5.1" -> "ac3", channels dropped). The analyzer's own audio
   # string survives only in metadata.audio_codec_raw, which is where Attrs
   # reads channels and the E-AC3/Atmos distinction from.

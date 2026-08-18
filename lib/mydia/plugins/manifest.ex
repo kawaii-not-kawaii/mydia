@@ -32,13 +32,11 @@ defmodule Mydia.Plugins.Manifest do
       must be in the v1 read catalog (`data_namespaces/0`); the host honors it
       via the `data_read` host function (U6), which returns a curated read-only
       projection — never raw rows or secrets.
-    * `surfaces:write` — write-back surfaces. **Reserved, not implemented in v1.**
 
-  To avoid an approve-but-no-runtime gap (KTD8), a v1 manifest declaring a
-  reserved-but-unimplemented class (only `surfaces:write` remains reserved) is
-  rejected at parse time with a clear "capability not available in this version"
-  error — the admin is never asked to approve a capability no host function
-  honors.
+  To avoid an approve-but-no-runtime gap (KTD8), a manifest declaring a
+  reserved-but-unimplemented class is rejected at parse time with a clear
+  "capability not available in this version" error — the admin is never asked to
+  approve a capability no host function honors.
 
   ## Settings schema
 
@@ -114,36 +112,25 @@ defmodule Mydia.Plugins.Manifest do
     media_file.imported
     download.completed
     download.failed
-    playback.started
-    playback.progressed
-    playback.paused
-    playback.finished
   )
 
   # All taxonomy classes (reserved + implemented). The schema/approval UI know
   # all four so they need no breaking change when the reserved ones land.
-  @known_classes ~w(events:subscribe net:http data:read surfaces:write state:kv users:connections schedule:interval)
+  @known_classes ~w(events:subscribe net:http data:read state:kv users:connections schedule:interval)
 
   # Implemented capability classes. `data:read` is honored by data-read/data-list;
   # `state:kv` by the kv-* host functions (U3); `users:connections` by
   # connections-list + the connect flow (U7); `schedule:interval` by the
-  # PluginScheduler tick (U4); `surfaces:write` by ensure-watched (U6).
-  @available_classes ~w(events:subscribe net:http data:read state:kv users:connections schedule:interval surfaces:write)
-
-  # The value vocabulary for `surfaces:write` — the curated write surfaces a
-  # plugin may target. Only `playback:watched` (the ensure-watched host function)
-  # is honored in this version.
-  @write_surfaces ~w(playback:watched)
+  # PluginScheduler tick (U4).
+  @available_classes ~w(events:subscribe net:http data:read state:kv users:connections schedule:interval)
 
   # The lowest interval (minutes) a scheduled plugin may request — a floor so a
   # misconfigured manifest can't tick the host to death.
   @min_schedule_interval 5
 
   # Read catalog: the resource namespaces `data:read` may scope to. `media_item`
-  # is served by both `data-read` (single) and `data-list` (enumerate);
-  # `playback_progress` (U5) is a `data-list`-only per-user watch projection,
-  # consent-scoped to users with an active connection to the calling plugin.
-  @data_namespaces ~w(media_item playback_progress)
+  # is served by both `data-read` (single) and `data-list` (enumerate).
+  @data_namespaces ~w(media_item)
 
   # Field types a `settings_schema` entry may declare. `text` renders as a
   # multiline textarea (used for template fields); otherwise like `string`.
@@ -288,24 +275,8 @@ defmodule Mydia.Plugins.Manifest do
     with :ok <- validate_classes(Map.keys(capabilities)),
          :ok <- validate_events(Map.get(capabilities, "events:subscribe")),
          :ok <- validate_http_hosts(Map.get(capabilities, "net:http")),
-         :ok <- validate_data_namespaces(Map.get(capabilities, "data:read")),
-         :ok <- validate_surfaces(Map.get(capabilities, "surfaces:write")) do
+         :ok <- validate_data_namespaces(Map.get(capabilities, "data:read")) do
       {:ok, capabilities}
-    end
-  end
-
-  defp validate_surfaces(nil), do: :ok
-
-  defp validate_surfaces(surfaces) when not is_list(surfaces),
-    do: {:error, Error.new(:invalid_manifest, "surfaces:write must be a list of surfaces")}
-
-  defp validate_surfaces([]),
-    do: {:error, Error.new(:invalid_manifest, "surfaces:write must not be empty")}
-
-  defp validate_surfaces(surfaces) do
-    case Enum.find(surfaces, &(&1 not in @write_surfaces)) do
-      nil -> :ok
-      bad -> {:error, Error.new(:invalid_manifest, "unknown surfaces:write surface: #{bad}")}
     end
   end
 

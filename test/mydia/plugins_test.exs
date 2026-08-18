@@ -511,7 +511,6 @@ defmodule Mydia.PluginsTest do
 
       slugs = Settings.get_db_plugin_configs() |> Enum.map(& &1.slug) |> MapSet.new()
       assert MapSet.member?(slugs, "webhook-notifier")
-      assert MapSet.member?(slugs, "simkl_sync")
     end
   end
 

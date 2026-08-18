@@ -94,18 +94,6 @@ config :mydia, Mydia.Auth.Guardian,
   ttl: {30, :days},
   allowed_drift: 0
 
-config :mydia, Mydia.RemoteAccess.MediaToken,
-  issuer: "mydia",
-  secret_key: "test-secret-key-for-jwt-signing",
-  ttl: {24, :hours},
-  allowed_drift: 0
-
-# Relay tunnel shared secret for tests
-config :mydia, :relay_tunnel_secret, "test-relay-tunnel-secret"
-
-# P2P keypair path for tests - use a temp directory
-config :mydia, :p2p_keypair_path, "/tmp/mydia_test_p2p_keypair.bin"
-
 # Keep Tower from shipping crash reports during the test suite: register no
 # real reporter (the in-memory ephemeral reporter is a no-op for our purposes)
 # and suppress plain-Logger-message capture.

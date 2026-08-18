@@ -231,19 +231,6 @@ config :mydia, Mydia.Auth.Guardian,
   verify_issuer: true,
   secret_key: "REPLACE_IN_RUNTIME_CONFIG"
 
-# Configure Guardian for media tokens (remote device access)
-config :mydia, Mydia.RemoteAccess.MediaToken,
-  issuer: "mydia",
-  ttl: {24, :hours},
-  allowed_drift: 2000,
-  verify_issuer: true,
-  secret_key: "REPLACE_IN_RUNTIME_CONFIG"
-
-# Relay tunnel shared secret for defense-in-depth authentication
-# Used to sign internal relay tunnel requests with HMAC-SHA256
-# This provides additional security beyond localhost IP checks
-config :mydia, :relay_tunnel_secret, "REPLACE_IN_RUNTIME_CONFIG"
-
 # Configure Oban for background job processing
 # Use Lite engine for SQLite, Basic engine for PostgreSQL
 oban_engine =
@@ -304,8 +291,6 @@ config :mydia, Oban,
        {"0 6 * * *", Mydia.Jobs.TraktTokenRefresh},
        # Permanently delete trashed media files past retention period daily at 5 AM
        {"0 5 * * *", Mydia.Jobs.TrashCleanup},
-       # Sync watched status with media servers every 30 minutes
-       {"*/30 * * * *", Mydia.Jobs.MediaServerWatchedSync, args: %{"mode" => "all_enabled"}},
        # Purge expired release-blacklist rows daily at 5:30 AM (#123)
        {"30 5 * * *", Mydia.Jobs.BlacklistCleanup},
        # Analyze media files lacking tech metadata every minute (#131)
@@ -344,24 +329,6 @@ config :mydia, :trash_dir, nil
 # Mydia.Config.Schema.Upgrades for the defaults (sweep_enabled: true,
 # sweep_batch_size: 50) and lib/mydia/config/loader.ex for the
 # UPGRADE_SWEEP_ENABLED / UPGRADE_SWEEP_BATCH_SIZE env vars.
-
-# HLS Streaming configuration
-config :mydia, :streaming,
-  # Session timeout (30 minutes of inactivity)
-  session_timeout: :timer.minutes(30),
-  # Temp directory for HLS segments
-  temp_base_dir: "/tmp/mydia-hls",
-  # Transcoding policy: :copy_when_compatible or :always
-  # :copy_when_compatible - Use stream copy for compatible codecs (H.264/AAC) - 10-100x faster, zero quality loss
-  # :always - Always re-encode (original behavior, slower but ensures consistent output)
-  transcode_policy: :copy_when_compatible
-
-# The transcode height ceiling is deliberately NOT here. This file is
-# compile-time and baked into the release, so a key here is unreachable to an
-# operator running the published image. It lives in the layered runtime config
-# instead (lib/mydia/config/schema.ex, the :streaming embed), which makes it
-# settable through MAX_TRANSCODE_HEIGHT, config.yml, or the settings UI. See
-# Mydia.Streaming.FfmpegHlsTranscoder.effective_max_height/1.
 
 # Episode monitor search limits
 # Prevents excessive API usage that exhausts indexer quotas
@@ -408,11 +375,6 @@ config :mydia, :indexer_search,
 
 # Feature flags
 config :mydia, :features,
-  # Enable/disable media playback feature (Play Movie, Play Episode buttons)
-  # Enables HLS streaming for in-browser video playback with codec transcoding
-  # Set to false to hide playback controls from the UI
-  # Can be overridden via ENABLE_PLAYBACK environment variable
-  playback_enabled: true,
   # Enable/disable Cardigann native indexer support
   # When enabled, provides access to hundreds of torrent indexers without external Prowlarr/Jackett
   # Set to false to disable Cardigann indexers
@@ -421,25 +383,7 @@ config :mydia, :features,
   # Enable/disable Import Lists feature
   # When enabled, shows the Import Lists UI for syncing external lists (TMDB watchlists, etc.)
   # Can be overridden via ENABLE_IMPORT_LISTS environment variable
-  import_lists_enabled: false,
-  # Enable/disable Remote Access feature (iroh-based peer-to-peer connectivity)
-  # When enabled, starts the p2p server for remote device pairing and media streaming
-  # Set to true to enable remote access functionality
-  # Can be overridden via ENABLE_REMOTE_ACCESS environment variable
-  remote_access_enabled: false
-
-# P2P networking configuration (iroh)
-# UDP port for direct peer-to-peer connections (enables hole punching)
-# Required when running in Docker to allow direct connections without relay
-# Set to nil for random port (works via relay but higher latency)
-# Can be overridden via P2P_BIND_PORT environment variable
-config :mydia, :p2p_bind_port, nil
-
-# Path to store the P2P keypair for persistent node identity
-# REQUIRED: Without this, the node ID changes on restart and paired devices can't reconnect
-# Can be overridden via P2P_KEYPAIR_PATH environment variable
-# Set in dev.exs for development, runtime.exs reads from env var for production
-config :mydia, :p2p_keypair_path, nil
+  import_lists_enabled: false
 
 # Configure Ueberauth with empty providers by default
 # This is overridden in dev.exs if OIDC is configured

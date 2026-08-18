@@ -15,9 +15,6 @@ defmodule Mydia.Application do
     # Suppress logger output in CLI mode
     if cli_mode?(), do: Logger.configure(level: :error)
 
-    # Create ETS tables before supervision tree for O(1) token lookups
-    create_ets_tables()
-
     # Load and validate configuration at startup
     config = load_config!()
 
@@ -64,8 +61,6 @@ defmodule Mydia.Application do
         # Fans "events:all" out to subscribed plugins (U5). Replaces the Luerl
         # hooks manager removed in U11.
         Mydia.Plugins.Dispatcher,
-        {Registry, keys: :unique, name: Mydia.Streaming.HlsSessionRegistry},
-        Mydia.Streaming.HlsSessionSupervisor,
         {Registry, keys: :unique, name: Mydia.Downloads.TranscodeRegistry},
         {Registry, keys: :unique, name: Mydia.Downloads.Client.Debrid.FetcherRegistry},
         {DynamicSupervisor,
@@ -77,25 +72,18 @@ defmodule Mydia.Application do
         Mydia.Downloads.JobManager,
         Mydia.CrashReporter.Throttle,
         Mydia.CrashReporter.Queue,
-        Mydia.RemoteAccess.ClaimRateLimiter,
         Mydia.Accounts.ApiKeyRateLimiter,
-        {Registry, keys: :unique, name: Mydia.DynamicSupervisorRegistry},
-        {DynamicSupervisor,
-         name: {:via, Registry, {Mydia.DynamicSupervisorRegistry, :relay}}, strategy: :one_for_one}
+        {Registry, keys: :unique, name: Mydia.DynamicSupervisorRegistry}
       ] ++
-        remote_access_children() ++
         client_health_children() ++
         indexer_health_children() ++
-        relay_children() ++
         oban_children() ++
         oidc_children() ++
         [
           # Start a worker by calling: Mydia.Worker.start_link(arg)
           # {Mydia.Worker, arg},
           # Start to serve requests, typically the last entry
-          MydiaWeb.Endpoint,
-          # Absinthe subscriptions must start after the Endpoint
-          {Absinthe.Subscription, MydiaWeb.Endpoint}
+          MydiaWeb.Endpoint
         ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -118,8 +106,6 @@ defmodule Mydia.Application do
       Mydia.Metadata.register_providers()
       # Rehydrate installed WASM plugins into the runtime registry
       Mydia.Plugins.register_plugins()
-      # Start relay service if remote access is enabled (requires Repo to be running)
-      start_relay_if_enabled()
       # Ensure default quality profiles exist (skip in test environment)
       if Application.get_env(:mydia, :start_health_monitors, true) do
         ensure_default_quality_profiles()
@@ -128,8 +114,6 @@ defmodule Mydia.Application do
         Mydia.Library.StartupSync.sync_all()
         # Check for database integrity issues and queue repairs if needed
         Mydia.Library.DatabaseHealthCheck.run()
-        # Clean up stale HLS session directories
-        cleanup_stale_hls_sessions()
       end
 
       {:ok, pid}
@@ -142,19 +126,6 @@ defmodule Mydia.Application do
   def config_change(changed, _new, removed) do
     MydiaWeb.Endpoint.config_change(changed, removed)
     :ok
-  end
-
-  defp remote_access_children do
-    # Only start P2P server and related processes if remote access is enabled
-    if Application.get_env(:mydia, :features)[:remote_access_enabled] do
-      [
-        Mydia.P2p.Server,
-        # Resume active pairing claims on startup
-        Mydia.RemoteAccess.ResumeClaims
-      ]
-    else
-      []
-    end
   end
 
   defp client_health_children do
@@ -173,19 +144,6 @@ defmodule Mydia.Application do
     else
       []
     end
-  end
-
-  defp relay_children do
-    # Relay is started dynamically after supervisor starts (see start_relay_if_enabled/0)
-    # This avoids querying the database before Repo is started
-    []
-  end
-
-  # Legacy relay service startup - no longer needed with P2P architecture.
-  # The Mydia.P2p.Server is now started in the supervision tree and handles
-  # all P2P connectivity for remote access.
-  defp start_relay_if_enabled do
-    :ok
   end
 
   defp oban_children do
@@ -364,23 +322,6 @@ defmodule Mydia.Application do
     end
   end
 
-  defp cleanup_stale_hls_sessions do
-    # Cleanup DB records for streaming jobs
-    Mydia.Downloads.delete_all_streaming_jobs()
-
-    case Mydia.Streaming.HlsCleanup.cleanup_stale_sessions() do
-      {:ok, 0} ->
-        :ok
-
-      {:ok, count} ->
-        unless cli_mode?(), do: IO.puts("✓ Cleaned up #{count} stale HLS session directory(ies)")
-
-      {:error, _reason} ->
-        # Don't fail startup on cleanup errors
-        :ok
-    end
-  end
-
   defp reset_stale_jobs do
     # Only reset stale jobs if Oban is configured to run
     oban_config = Application.get_env(:mydia, Oban, [])
@@ -395,11 +336,5 @@ defmodule Mydia.Application do
           unless cli_mode?(), do: IO.puts("✓ Reset #{count} stale job(s) to available state")
       end
     end
-  end
-
-  defp create_ets_tables do
-    # Create ETS tables for O(1) media token lookups
-    # These must be created before the supervision tree starts
-    Mydia.Media.TokenCache.create_table()
   end
 end

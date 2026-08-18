@@ -12,25 +12,11 @@ Mydia is a self-hosted media management application for organizing and tracking 
 
 The application is designed to be deployed on personal servers or home lab environments, giving users complete control over their media collection data.
 
-## Remote Access Architecture (P2P)
-
-Mydia uses a decentralized **p2p** architecture for remote access.
-
-### Key Components
-
-- **Core (Rust)**: The shared networking logic is implemented in a pure Rust crate (`native/mydia_p2p_core`) on top of [iroh](https://www.iroh.computer/). This ensures protocol parity between client and server.
-- **Backend (Elixir)**: The Phoenix app wraps the core crate using a Rustler NIF (`Mydia.P2p`). It acts as a permanent node.
-- **Frontend (Flutter)**: The player app wraps the same core crate using `flutter_rust_bridge`. It connects to the backend for discovery and control.
-
-### Connectivity
-
-- **Identity**: Every node has an Ed25519 keypair; the public key is its node ID.
-- **Discovery**: Nodes publish signed records mapping their key to their current addresses and relay, distributed over DNS by iroh's default discovery service.
-- **Transport**: QUIC over UDP, encrypted with TLS 1.3.
-- **Relay**: A relay introduces peers and carries traffic until hole punching succeeds, and stays in the data path when it fails (symmetric NAT, some corporate firewalls). Mydia operates one; iroh's public relays are the fallback.
-- **Media**: Media streams (HLS) are served over the p2p connection (via a local proxy in the client).
-
-There is no libp2p, no Kademlia DHT, no mDNS, no TCP, and no Noise handshake. An earlier revision of this file described that design; it was replaced by iroh. Check `native/mydia_p2p_core/Cargo.toml` before relying on any of this.
+Mydia does **not** play media. It acquires, organizes and renames files; playback
+is somebody else's job (Plex, Jellyfin, Infuse, VLC). There is no in-browser
+player, no transcoding or HLS stack, no watch-state tracking, no companion app
+and no GraphQL API — all of that was removed deliberately. If you find a
+reference to any of it, it is stale documentation, not a missing feature.
 
 ## Metadata Relay Service
 
@@ -54,44 +40,6 @@ Mydia uses a companion service called **metadata-relay**, which is a developer-o
 - **Never** embed TVDB or TMDB API keys directly in the mydia application
 - Configure the metadata-relay base URL via application configuration
 - Handle metadata-relay service failures gracefully with appropriate error messages
-
-## Player (Flutter)
-
-The Flutter player has additional workflow guidance in `player/CLAUDE.md`.
-
-### Player Android Builds
-
-Android builds use the root flake's `.#android` dev shell (`nix/devShells/flake-module.nix`) which provides Flutter, Android SDK, NDK, and Rust cross-compilation toolchains.
-
-**Commands:**
-
-- `./dev player android build` - Build release APK
-- `./dev player android run` - Build and run on connected Android device
-- `./dev player android shell` - Open nix develop shell for manual commands
-
-**Output:** `player/build/app/outputs/flutter-apk/app-release.apk`
-
-**Requirements:** Nix must be installed on the host system (not Docker).
-
-**What the flake provides:**
-- Flutter SDK
-- Android SDK with NDK 27.0.12077973
-- Rust toolchain with Android targets (aarch64, armv7, x86_64, i686)
-- All necessary environment variables for Rust cross-compilation
-
-### Player macOS Builds
-
-macOS builds use the **host** toolchain — neither devenv nor the `.#android` dev shell. Xcode and CocoaPods are Apple-licensed SDKs Nix cannot provide, and cargokit shells out to `rustup` to compile the Rust p2p core into the app bundle.
-
-**Commands:**
-
-- `./dev player macos run` - Debug build and run on this Mac (hot reload)
-- `./dev player macos build` - Release build
-- Both accept `--skip-codegen` to reuse existing build_runner output; extra args after `run` pass through to `flutter run`
-
-**Output:** `player/build/macos/Build/Products/Release/Mydia Player.app`
-
-**Requirements:** **Full Xcode** (Command Line Tools alone cannot build app bundles), CocoaPods (`pod`), Flutter, and rustup installed on the host. `./dev` preflights all four and prints the fix for whichever is missing.
 
 ## Project guidelines
 

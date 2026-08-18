@@ -22,5 +22,5 @@ inputs:
       nixpkgs:
         follows: nixpkgs
 
-# pkgs.flutter (and its Android/SDK closure) is unfree.
+# Some packages in the dev shell closure are unfree.
 allowUnfree: true

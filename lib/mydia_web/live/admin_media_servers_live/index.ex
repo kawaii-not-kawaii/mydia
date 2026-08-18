@@ -362,29 +362,6 @@ defmodule MydiaWeb.AdminMediaServersLive.Index do
   end
 
   @impl true
-  def handle_event("sync_watched", %{"id" => id}, socket) do
-    server = Settings.get_media_server_config!(id)
-    user_id = socket.assigns.current_user.id
-
-    changeset =
-      Mydia.Jobs.MediaServerWatchedSync.new(%{
-        "config_id" => server.id,
-        "user_id" => user_id
-      })
-
-    case Oban.insert(changeset) do
-      {:ok, _job} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Watched sync started for #{server.name}")
-         |> load_data()}
-
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, "Failed to start watched sync for #{server.name}")}
-    end
-  end
-
-  @impl true
   def handle_event("test_media_server_connection", _params, socket) do
     changeset = socket.assigns.media_server_form.source
     params = Ecto.Changeset.apply_changes(changeset)

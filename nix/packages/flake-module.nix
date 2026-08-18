@@ -6,10 +6,9 @@
       # BEAM packages (Erlang/Elixir)
       beamPackages = pkgs.beam.packages.erlang_28;
 
-      # Pinned Rust toolchain (rust-overlay, same construction as the dev
-      # shells — pinned by flake.lock) with the wasm32-wasip2 std, so the
-      # release build compiles both the p2p NIF and the bundled wasip2 plugin
-      # guests under plugins/*/ (the guest's WASI world tracks the Rust
+      # Pinned Rust toolchain (rust-overlay, pinned by flake.lock) with the
+      # wasm32-wasip2 std, so the release build compiles the bundled wasip2
+      # plugin guests under plugins/*/ (the guest's WASI world tracks the Rust
       # version; keep in lockstep with CI/Docker — see ci.yml).
       rustPkgs = import inputs.nixpkgs {
         inherit system;
@@ -31,7 +30,11 @@
         sha256 = "5638eb4495488e885ebec167fa57973e5c35e1a50c344eb7666c90ec1c4e3b12";
       };
 
-      # Pre-fetch Rust/Cargo dependencies for the p2p NIF (required for sandbox build).
+      # Vendored crates for the bundled webhook_notifier plugin guest, built for
+      # wasm32-wasip2 by the plugins Mix compiler during `mix compile`. Each
+      # bundled guest is its own crate with its own lock, so a new guest needs
+      # its deps vendored here (and a `.cargo/config.toml` below) or the
+      # no-network sandbox build fails.
       #
       # Uses importCargoLock rather than fetchCargoVendor: fetchCargoVendor's
       # `fetch-cargo-vendor-util` downloads crates with a `python-requests/<ver>`
@@ -39,21 +42,8 @@
       # breaking the build. importCargoLock fetches each crate via nix's fetchurl
       # (curl UA, not blocked) and derives hashes from Cargo.lock, so no vendor hash
       # to maintain. The lock is pure crates.io (no git deps), so no outputHashes needed.
-      cargoDeps = pkgs.rustPlatform.importCargoLock {
-        lockFile = ../../native/mydia_p2p/Cargo.lock;
-      };
-
-      # Vendored crates for the bundled webhook_notifier plugin guest, built for
-      # wasm32-wasip2 by the plugins Mix compiler during `mix compile`.
       webhookNotifierCargoDeps = pkgs.rustPlatform.importCargoLock {
         lockFile = ../../plugins/webhook_notifier/Cargo.lock;
-      };
-
-      # Same for the bundled simkl_sync plugin guest. Each bundled guest is its
-      # own crate with its own lock, so a new guest needs its deps vendored here
-      # (and a `.cargo/config.toml` below) or the no-network sandbox build fails.
-      simklSyncCargoDeps = pkgs.rustPlatform.importCargoLock {
-        lockFile = ../../plugins/simkl_sync/Cargo.lock;
       };
 
       # Precompiled wasmex NIF (rustler_precompiled downloads this at compile
@@ -324,7 +314,8 @@
           inherit npmDeps;
           npmRoot = "assets";
 
-          # Create missing deps symlinks and set up Cargo vendoring for Rust NIF
+          # Create missing deps symlinks and set up Cargo vendoring for the
+          # bundled wasm plugin guests
           postConfigure = ''
             echo "=== postConfigure: Creating missing deps symlinks ==="
 
@@ -344,18 +335,9 @@
             echo "=== postConfigure: Done. deps/ count ==="
             ls deps/ | wc -l
 
-            # Set up Cargo vendoring for the Rust p2p NIF
-            mkdir -p native/mydia_p2p/.cargo
-            cat > native/mydia_p2p/.cargo/config.toml <<CARGO_EOF
-            [source.crates-io]
-            replace-with = "vendored-sources"
-
-            [source.vendored-sources]
-            directory = "${cargoDeps}"
-            CARGO_EOF
-
-            # Same for the bundled webhook_notifier plugin guest (wasm32-wasip2),
-            # compiled by the plugins Mix compiler during `mix compile`.
+            # Cargo vendoring for the bundled webhook_notifier plugin guest
+            # (wasm32-wasip2), compiled by the plugins Mix compiler during
+            # `mix compile`.
             mkdir -p plugins/webhook_notifier/.cargo
             cat > plugins/webhook_notifier/.cargo/config.toml <<CARGO_EOF
             [source.crates-io]
@@ -363,16 +345,6 @@
 
             [source.vendored-sources]
             directory = "${webhookNotifierCargoDeps}"
-            CARGO_EOF
-
-            # Same for the bundled simkl_sync plugin guest.
-            mkdir -p plugins/simkl_sync/.cargo
-            cat > plugins/simkl_sync/.cargo/config.toml <<CARGO_EOF
-            [source.crates-io]
-            replace-with = "vendored-sources"
-
-            [source.vendored-sources]
-            directory = "${simklSyncCargoDeps}"
             CARGO_EOF
           '';
 

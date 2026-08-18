@@ -88,7 +88,6 @@ defmodule MydiaWeb.CollectionLive.Index do
                 href={~p"/collections/#{collection.id}"}
                 item_count={collection.item_count || 0}
                 poster_paths={collection.poster_paths || []}
-                on_play="play_collection"
                 can_edit={can_edit?(collection, @current_user)}
               />
             </:collection>
@@ -101,7 +100,6 @@ defmodule MydiaWeb.CollectionLive.Index do
                 href={~p"/collections/#{collection.id}"}
                 item_count={collection.item_count || 0}
                 poster_paths={collection.poster_paths || []}
-                on_play="play_collection"
                 can_edit={can_edit?(collection, @current_user)}
               />
             </:collection>
@@ -288,31 +286,6 @@ defmodule MydiaWeb.CollectionLive.Index do
 
   def handle_event("close_new_modal", _params, socket) do
     {:noreply, assign(socket, :show_new_modal, false)}
-  end
-
-  alias MydiaWeb.MediaLive.Show.Helpers, as: PlayerHelpers
-
-  def handle_event("play_collection", %{"id" => collection_id}, socket) do
-    user = socket.assigns.current_user
-
-    case Collections.get_collection(user, collection_id) do
-      nil ->
-        {:noreply, put_flash(socket, :error, "Collection not found")}
-
-      collection ->
-        # Get all playable items from the collection
-        playable_items = Collections.get_playable_items(collection)
-
-        case playable_items do
-          [] ->
-            {:noreply, put_flash(socket, :error, "No playable items in this collection")}
-
-          items ->
-            # Build the queue player URL and redirect
-            queue_url = PlayerHelpers.flutter_queue_player_url(items)
-            {:noreply, redirect(socket, external: queue_url)}
-        end
-    end
   end
 
   def handle_event("validate_collection", %{"collection" => params} = full_params, socket) do

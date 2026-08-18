@@ -15,7 +15,6 @@ defmodule MydiaWeb.ActivityLive.IndexTest do
     "job" => "system",
     "media_file" => "media",
     "media_item" => "media",
-    "playback" => "playback",
     "plugin" => "plugin",
     "search" => "search"
   }
@@ -333,36 +332,6 @@ defmodule MydiaWeb.ActivityLive.IndexTest do
       send(view.pid, {:event_created, event})
 
       refute render(view) =~ "api.themoviedb.org"
-    end
-
-    test "offers a playback filter chip that filters to playback events", %{conn: conn} do
-      {:ok, _} =
-        Events.create_event(%{
-          category: "playback",
-          type: "playback.finished",
-          actor_type: :user,
-          actor_id: "someone",
-          metadata: %{"completion_percentage" => 98, "origin" => "player"}
-        })
-
-      {:ok, _} =
-        Events.create_event(%{
-          category: "downloads",
-          type: "download.completed",
-          actor_type: :system,
-          actor_id: "system",
-          metadata: %{"title" => "Arrival"}
-        })
-
-      {:ok, view, _html} = live(conn, ~p"/activity")
-
-      html =
-        view
-        |> element("button[phx-value-category='playback']")
-        |> render_click()
-
-      assert html =~ "Playback finished"
-      refute html =~ "Arrival"
     end
 
     test "offers a plugins filter chip", %{conn: conn} do

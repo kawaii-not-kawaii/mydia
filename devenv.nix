@@ -3,7 +3,7 @@
 # Mydia developer environment (devenv.sh).
 #
 # Replaces the Docker-based `./dev` toolchain. The daily loop (Phoenix server,
-# `mix test`, `mix precommit`, Flutter codegen) runs natively in this shell;
+# `mix test`, `mix precommit`) runs natively in this shell;
 # each git worktree derives its own non-colliding ports and isolated state.
 #
 # ⚠️ KEEP IN SYNC — this file is the source of truth for the Elixir/OTP
@@ -13,14 +13,10 @@
 #   - this file    (beam.packages.erlang_28)
 #   - Dockerfile   (FROM elixir:1.19-otp-28 prod base)
 #
-# Two toolchains are NOT listed above and must not be named here, because each
-# lives in exactly one file that everything else reads:
-#   - Flutter lives in player/.fvmrc, resolved by player/flutter-version.nix.
-#     devenv, the Android shell (nix/devShells), all four workflows and the
-#     Dockerfile read that one file, and a mismatch between it and nixpkgs is an
-#     eval error rather than something a reader has to notice.
-#   - Rust lives in rust-toolchain.toml, read by this file, by cargokit, by both
-#     Dockerfiles, and by every rustup proxy invocation in the tree.
+# One toolchain is NOT listed above and must not be named here, because it lives
+# in exactly one file that everything else reads: Rust lives in
+# rust-toolchain.toml, read by this file, by the Dockerfile, and by every rustup
+# proxy invocation in the tree.
 # CI fails the build if any other file names a Rust version.
 
 let
@@ -65,9 +61,7 @@ let
   offset = lib.mod raw 100;
   portBase = 4000 + offset * 10;
   phxPort = portBase;
-  p2pPort = portBase + 1;
   pgPort = portBase + 2;
-  flutterPort = portBase + 3;
   httpsPort = portBase + 4;
 
   # ── Shared caches outside any worktree (KTD4 / R11) ─────────────────────────
@@ -88,18 +82,12 @@ let
   # ── CI task guard (KTD7) ────────────────────────────────────────────────────
   # In CI the workflow runs its own hex/deps/ecto/asset setup explicitly inside
   # the devenv shell, so the first-run tasks below must NOT auto-fire on shell
-  # entry — otherwise every CI job would run `flutter pub get` and a dev-DB
+  # entry — otherwise every CI job would run a dev-DB
   # migrate against dev defaults, polluting results and inflating the measured
   # closure. GitHub Actions (and most CI) export CI=true; read it at eval time
   # and drop the enterShell trigger when set. Local shells are unaffected.
   isCI = builtins.getEnv "CI" != "";
   onEnterShell = lib.optionals (!isCI) [ "devenv:enterShell" ];
-
-  # ── Flutter (single source of truth) ────────────────────────────────────────
-  # player/.fvmrc is the only place the Flutter version is written. The resolver
-  # throws if nixpkgs disagrees, so a `devenv update` that moves Flutter fails
-  # loudly here instead of silently shipping a different SDK than CI uses.
-  flutterPkg = import ./player/flutter-version.nix { inherit pkgs; };
 in
 {
   languages.elixir = {
@@ -121,20 +109,13 @@ in
     enable = true;
     channel = "stable";
     version = rustVersion;
-    targets = [ "wasm32-unknown-unknown" "wasm32-wasip2" ];
+    targets = [ "wasm32-wasip2" ];
     components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" "rust-src" ];
   };
 
-  # Remaining dev toolchain. Flutter comes from nixpkgs (KTD3); the Android
-  # shell (nix/devShells) resolves it through the same player/flutter-version.nix,
-  # so the NixOS dynamic-linker/patchelf handling is proven for this codebase. wasm-tools is carried from the flake's
-  # shells (used by scripts/check-plugins.sh).
-  #
-  # The Flutter version is NOT named here. It comes from player/.fvmrc through
-  # flutterPkg above, shared with the Android shell, CI and Docker.
+  # Remaining dev toolchain. wasm-tools is carried from the flake's shells (used
+  # by scripts/check-plugins.sh).
   packages = with pkgs; [
-    flutterPkg
-
     # Node.js for assets
     nodejs
 
@@ -154,29 +135,9 @@ in
     git
     curl
 
-    # Rasterize the player's SVG logo into the web icon set
-    # (player/tool/gen-web-icons.sh). librsvg is cross-platform in nixpkgs, so it
-    # belongs in this unconditional list, not the Linux-gated one below.
-    librsvg
-
     # Inspect/validate WASM components (WIT plugin guests)
     wasm-tools
 
-    # player/tool/build_web.sh builds mydia_p2p_core for wasm through
-    # `flutter pub run flutter_rust_bridge build-web`, which shells out to
-    # `wasm-pack` directly (not the cargo-installed flutter_rust_bridge_codegen
-    # binary). Without wasm-pack on PATH, that Dart code falls back to `cargo
-    # install wasm-pack`, which compiles the crate from source and costs
-    # minutes on every CI run instead of resolving a Cachix-cached derivation.
-    # Verified this pair closes the gap rather than just shrinking it: with
-    # both present, wasm-pack finds this wasm-opt on PATH directly
-    # ("found wasm-opt at .../binaryen-.../bin/wasm-opt") and never downloads
-    # one. It still downloads wasm-bindgen from a GitHub release regardless,
-    # since that one must match the exact wasm-bindgen crate version pinned in
-    # Cargo.lock and wasm-pack does not trust a PATH copy for that. Fine on a
-    # normal internet-connected runner, just not eliminated by this package.
-    wasm-pack
-    binaryen
   ]
   # ── Linux-only packages (KTD7) ────────────────────────────────────────────
   # These have meta.platforms = linux, so listing them unconditionally made the
@@ -202,17 +163,6 @@ in
     # IEx shell history.
     ERL_AFLAGS = "-kernel shell_history enabled";
 
-    # C cross-compilation for the wasm32-unknown-unknown target listed under
-    # languages.rust above. `ring`, which is rustls' crypto provider and so
-    # iroh's, compiles C sources through cc-rs, and cc-rs falls back to the
-    # ambient CC, which nix sets to a host gcc wrapper. That silently yields
-    # x86-64 objects rust-lld then refuses to link. The nix clang *wrapper* is
-    # no better: it injects host glibc include paths and hardening flags
-    # (-fzero-call-used-regs) that clang rejects for wasm. An unwrapped clang
-    # plus llvm-ar is what actually cross-compiles.
-    CC_wasm32_unknown_unknown = "${pkgs.llvmPackages.clang-unwrapped}/bin/clang";
-    AR_wasm32_unknown_unknown = "${pkgs.llvmPackages.llvm}/bin/llvm-ar";
-
     # Shared, worktree-independent caches (KTD4 / R11).
     MIX_HOME = "${sharedCache}/mix";
     HEX_HOME = "${sharedCache}/hex";
@@ -222,8 +172,6 @@ in
     # Per-worktree ports (R8). lib.mkDefault so devenv.local.nix can pin them (R9).
     PORT = lib.mkDefault (toString phxPort);
     HTTPS_PORT = lib.mkDefault (toString httpsPort);
-    P2P_BIND_PORT = lib.mkDefault (toString p2pPort);
-    FLUTTER_DEV_PORT = lib.mkDefault (toString flutterPort);
 
     # Postgres connection details (read by config/dev.exs only under
     # DATABASE_TYPE=postgres). devenv's Postgres bootstraps a superuser role
@@ -271,13 +219,6 @@ in
   # supervision tree's Ecto.Migrator never runs under mix. Booting against an
   # unmigrated database dies in ClientHealth.init/1, so wait for the task.
   processes.phoenix.after = [ "mydia:ecto@succeeded" ];
-
-  # build_runner watch performs GraphQL/Riverpod codegen for the player. This is
-  # distinct from MydiaWeb.FlutterWatcher (config/dev.exs), which runs
-  # `flutter build web` on source changes — codegen feeds the web build, so both
-  # are needed and they do not double-run.
-  processes.flutter-codegen.exec =
-    "cd player && flutter pub run build_runner watch";
 
   # ── First-run / re-entry setup tasks (R6) ───────────────────────────────────
   # Replace docker-entrypoint.sh. Guarded with execIfModified so re-entry is
@@ -367,46 +308,26 @@ in
       before = onEnterShell;
       after = [ "mydia:deps" ];
     };
-
-    "mydia:flutter" = {
-      exec = "cd player && flutter pub get";
-      execIfModified = [ "player/pubspec.yaml" "player/pubspec.lock" ];
-      before = onEnterShell;
-    };
   };
 
   # ── Git hooks (KTD7 / R17) ──────────────────────────────────────────────────
   # devenv owns the generated .pre-commit-config.yaml (git-ignored). Hooks run
-  # inside this shell, so cargo/mix/dart resolve to the pinned toolchain — no
+  # inside this shell, so cargo/mix resolve to the pinned toolchain — no
   # `nix develop .#rust -c …` subshell needed. Patterns mirror the retired
   # .pre-commit-config.yaml.
   git-hooks.hooks = {
     cargo-fmt = {
       enable = true;
       name = "cargo fmt";
-      entry = "cargo fmt --manifest-path native/mydia_p2p/Cargo.toml -- --check";
+      entry = "cargo fmt --manifest-path native/mydia_plugin_sdk/Cargo.toml -- --check";
       files = "^native/.*\\.rs$";
       pass_filenames = false;
     };
     cargo-clippy = {
       enable = true;
       name = "cargo clippy";
-      entry = "cargo clippy --manifest-path native/mydia_p2p/Cargo.toml -- -D warnings";
+      entry = "cargo clippy --manifest-path native/mydia_plugin_sdk/Cargo.toml -- -D warnings";
       files = "^native/.*\\.rs$";
-      pass_filenames = false;
-    };
-    server-fmt = {
-      enable = true;
-      name = "cargo fmt (server)";
-      entry = "cargo fmt --manifest-path server/Cargo.toml --all -- --check";
-      files = "^server/.*\\.rs$";
-      pass_filenames = false;
-    };
-    server-clippy = {
-      enable = true;
-      name = "cargo clippy (server)";
-      entry = "cargo clippy --manifest-path server/Cargo.toml --all-targets -- -D warnings";
-      files = "^server/.*\\.rs$";
       pass_filenames = false;
     };
     plugins-check = {
@@ -423,21 +344,6 @@ in
       files = "\\.(ex|exs|heex)$";
       pass_filenames = false;
     };
-    dart-format = {
-      enable = true;
-      name = "dart format";
-      entry = "dart format --set-exit-if-changed --line-length 80";
-      files = "\\.dart$";
-      excludes = [ "\\.(g|freezed)\\.dart$" ];
-    };
-    dart-analyze = {
-      enable = true;
-      name = "dart analyze";
-      entry = "dart analyze --fatal-warnings";
-      files = "\\.dart$";
-      excludes = [ "\\.(g|freezed)\\.dart$" ];
-      pass_filenames = false;
-    };
   };
 
   # ── Shell-entry banner (R10) ────────────────────────────────────────────────
@@ -445,8 +351,6 @@ in
     echo ""
     echo "Mydia dev environment (devenv) — $DEVENV_ROOT"
     echo "  Phoenix:   http://localhost:$PORT  ·  https://localhost:$HTTPS_PORT"
-    echo "  P2P bind:  $P2P_BIND_PORT"
-    echo "  Flutter:   dev-server port $FLUTTER_DEV_PORT"
     ${lib.optionalString usePostgres ''
       echo "  Postgres:  127.0.0.1:$DATABASE_PORT (mydia_dev / mydia_test)"''}
     echo "  Toolchain: Elixir $(elixir --version | tail -1 | cut -d' ' -f2) · Rust $(rustc --version | cut -d' ' -f2) · Node $(node --version)"
