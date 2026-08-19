@@ -28,7 +28,7 @@ openssl rand -base64 48  # GUARDIAN_SECRET_KEY
 ```yaml
 services:
   mydia:
-    image: ghcr.io/getmydia/mydia:latest
+    image: ghcr.io/kawaii-not-kawaii/mydia:master
     container_name: mydia
     environment:
       - PUID=1000

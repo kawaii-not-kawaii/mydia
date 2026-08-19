@@ -242,6 +242,7 @@ defmodule Mydia.Indexers do
       results =
         all_results
         |> filter_by_seeders(min_seeders)
+        |> reject_undownloadable_protocols(opts)
         |> then(fn results ->
           if should_deduplicate, do: deduplicate_results(results), else: results
         end)
@@ -439,6 +440,48 @@ defmodule Mydia.Indexers do
     )
 
     {metrics, results}
+  end
+
+  # Drops results no enabled download client could accept — an NZB result with
+  # only qBittorrent configured, say. Without this the search ranks and grabs a
+  # release it cannot hand anywhere: the .nzb is fetched from the indexer and
+  # only then does client selection fail with `:no_clients_configured`, burning
+  # an indexer grab per attempt.
+  #
+  # Opt out with `include_undownloadable: true`, which the manual search UI
+  # does — showing an operator the NZB results they *would* get is how they
+  # learn to add a Usenet client, whereas an empty result list just looks broken.
+  #
+  # Permissive by design: results whose protocol we could not sniff (nil) are
+  # kept, matching `Downloads.Queue.supports_download_type?/2`, and no filtering
+  # happens at all when no client is enabled.
+  defp reject_undownloadable_protocols(results, opts) do
+    if Keyword.get(opts, :include_undownloadable, false) do
+      results
+    else
+      case Mydia.Downloads.Queue.configured_protocols() do
+        :any ->
+          results
+
+        supported ->
+          Enum.reject(results, fn result ->
+            protocol = Map.get(result, :download_protocol)
+
+            if protocol != nil and protocol not in supported do
+              Logger.debug(
+                "Filtered result with unsupported protocol",
+                protocol: protocol,
+                supported: inspect(supported),
+                title: Map.get(result, :title)
+              )
+
+              true
+            else
+              false
+            end
+          end)
+      end
+    end
   end
 
   # Drops NZB results younger than `config.min_post_age_minutes`. No-op when

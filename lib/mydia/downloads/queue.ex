@@ -1110,6 +1110,38 @@ defmodule Mydia.Downloads.Queue do
   # search result's resolved download_type. When download_type is nil (we
   # couldn't sniff it from the payload), every client is eligible — the
   # adapter's `add_torrent/3` will reject mismatched payloads.
+  @doc """
+  Protocols that at least one enabled download client can actually accept.
+
+  Returns `:any` when no client is enabled, so callers stay permissive rather
+  than filtering every result away on a fresh install.
+  """
+  @spec configured_protocols() :: [atom()] | :any
+  def configured_protocols do
+    enabled = Enum.filter(Settings.list_download_client_configs(), & &1.enabled)
+
+    case enabled do
+      [] ->
+        :any
+
+      clients ->
+        clients
+        |> Enum.flat_map(fn client ->
+          case Registry.get_adapter(client.type) do
+            {:ok, adapter} ->
+              if Code.ensure_loaded?(adapter) and
+                   function_exported?(adapter, :supported_protocols, 0),
+                 do: adapter.supported_protocols(),
+                 else: []
+
+            {:error, _} ->
+              []
+          end
+        end)
+        |> Enum.uniq()
+    end
+  end
+
   def supports_download_type?(_client, nil), do: true
 
   def supports_download_type?(client, download_type) do
@@ -1473,19 +1505,7 @@ defmodule Mydia.Downloads.Queue do
     case Req.head(url, req_opts) do
       {:ok, %{status: status} = response} when status in 301..308 ->
         # This is a redirect response
-        case get_location_header(response.headers) do
-          nil ->
-            Logger.error("Redirect (#{status}) missing Location header for URL: #{url}")
-            {:error, {:redirect_error, "Redirect missing Location header"}}
-
-          location ->
-            if String.starts_with?(location, "magnet:") do
-              {:ok, {:magnet, location}}
-            else
-              # Follow the redirect, encoding the location URL to handle special characters
-              follow_to_final_url(encode_url(location), cookie_header, redirects_remaining - 1)
-            end
-        end
+        follow_redirect(url, status, response, cookie_header, redirects_remaining)
 
       {:ok, %{status: 200}} ->
         # No redirect, this is the final URL
@@ -1528,19 +1548,7 @@ defmodule Mydia.Downloads.Queue do
     case Req.get(url, req_opts) do
       {:ok, %{status: status} = response} when status in 301..308 ->
         # This is a redirect response
-        case get_location_header(response.headers) do
-          nil ->
-            Logger.error("Redirect (#{status}) missing Location header for URL: #{url}")
-            {:error, {:redirect_error, "Redirect missing Location header"}}
-
-          location ->
-            if String.starts_with?(location, "magnet:") do
-              {:ok, {:magnet, location}}
-            else
-              # Follow the redirect, encoding the location URL to handle special characters
-              follow_to_final_url(encode_url(location), cookie_header, redirects_remaining - 1)
-            end
-        end
+        follow_redirect(url, status, response, cookie_header, redirects_remaining)
 
       {:ok, %{status: 200}} ->
         # No redirect, this is the final URL
@@ -1568,6 +1576,42 @@ defmodule Mydia.Downloads.Queue do
       {:error, exception} ->
         {:error, {:http_error, exception}}
     end
+  end
+
+  # Both the HEAD and GET paths land here once a 3xx comes back.
+  defp follow_redirect(url, status, response, cookie_header, redirects_remaining) do
+    case get_location_header(response.headers) do
+      nil ->
+        Logger.error("Redirect (#{status}) missing Location header for URL: #{url}")
+        {:error, {:redirect_error, "Redirect missing Location header"}}
+
+      "magnet:" <> _ = location ->
+        {:ok, {:magnet, location}}
+
+      location ->
+        follow_to_final_url(
+          resolve_location(url, location),
+          cookie_header,
+          redirects_remaining - 1
+        )
+    end
+  end
+
+  # A Location header is allowed to be a relative reference (RFC 9110 10.2.2),
+  # and indexers use one whenever an expired cookie or API key bounces the
+  # request to `/login?redirect=...`. Passing that straight back to Req raises
+  # `ArgumentError: scheme is required for url` from Finch, so resolve it
+  # against the URL we just requested. Absolute locations merge to themselves.
+  @doc false
+  def resolve_location(base, location) do
+    base
+    |> URI.merge(location)
+    |> URI.to_string()
+    |> encode_url()
+  rescue
+    # URI.merge/2 raises when the base is not absolute, which leaves nothing to
+    # resolve against; fall back to the raw location and let Req report it.
+    ArgumentError -> encode_url(location)
   end
 
   defp get_location_header(headers) do

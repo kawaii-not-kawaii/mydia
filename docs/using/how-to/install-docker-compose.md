@@ -16,13 +16,19 @@ Building and running from a source checkout is a development workflow, covered i
 
 ## Supported Architectures
 
-Released images are multi-arch. `ghcr.io/getmydia/mydia:latest` resolves to the
-right build for your machine, so you should not need to name an architecture.
+This fork publishes `master` and `master-pg`, rebuilt from every commit on the
+default branch. It does not publish `latest`, `beta` or version tags: those come
+from the release workflow, and no release has been cut.
 
-| Architecture | Released images |
-|:------------:|:---------------:|
+**These images are `linux/amd64` only.** They will not run on a Raspberry Pi, an
+arm64 server, or Apple Silicon. Multi-arch images come from the release
+workflow, so on arm64 hardware you need to build locally
+(`docker build -t mydia .`) or cut a release.
+
+| Architecture | Images |
+|:------------:|:------:|
 | x86-64 (amd64) | Yes |
-| arm64 (Apple Silicon, Raspberry Pi 4/5) | Yes |
+| arm64 (Apple Silicon, Raspberry Pi 4/5) | No, build locally |
 
 Per-architecture tags exist as build inputs to the multi-arch manifest, in the form
 `<version>[-pg]-<arch>`, for example `1.4.0-arm64` or `1.4.0-pg-amd64`. They are
@@ -54,7 +60,7 @@ services:
   # MYDIA - Media Management
   # =============================================================================
   mydia:
-    image: ghcr.io/getmydia/mydia:latest
+    image: ghcr.io/kawaii-not-kawaii/mydia:master
     container_name: mydia
     environment:
       # --- Required Secrets (generate with: openssl rand -base64 48) ---
@@ -164,7 +170,7 @@ docker run -d \
   -v /path/to/mydia/config:/config \
   -v /path/to/your/media:/media \
   --restart unless-stopped \
-  ghcr.io/getmydia/mydia:latest
+  ghcr.io/kawaii-not-kawaii/mydia:master
 ```
 
 ## Volume Mappings

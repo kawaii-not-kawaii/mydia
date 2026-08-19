@@ -44,7 +44,11 @@ defmodule MydiaWeb.MediaLive.Show.SearchHelpers do
   def perform_search(query, min_seeders) do
     opts = [
       min_seeders: min_seeders,
-      deduplicate: true
+      deduplicate: true,
+      # Manual search shows every protocol, including ones no configured client
+      # can take. Hiding them would read as "no results" instead of "you need a
+      # Usenet client"; the grab itself still fails loudly if it can't be routed.
+      include_undownloadable: true
     ]
 
     {:ok, %{results: results, indexer_errors: indexer_errors}} =

@@ -903,7 +903,10 @@ defmodule MydiaWeb.SearchLive.Index do
     opts = [
       min_seeders: min_seeders,
       deduplicate: true,
-      indexer_ids: indexer_ids
+      indexer_ids: indexer_ids,
+      # See MediaLive.Show.SearchHelpers.perform_search/2 — manual search
+      # deliberately shows protocols no configured client can accept.
+      include_undownloadable: true
     ]
 
     {:ok, %{results: results, indexer_errors: indexer_errors}} =
