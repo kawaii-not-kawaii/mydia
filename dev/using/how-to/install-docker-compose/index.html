@@ -3015,13 +3015,18 @@ architectures, database variants, volumes, and a full stack you can copy.</p>
 </tbody>
 </table>
 <h2 id="supported-architectures">Supported Architectures</h2>
-<p>Released images are multi-arch. <code>ghcr.io/getmydia/mydia:latest</code> resolves to the
-right build for your machine, so you should not need to name an architecture.</p>
+<p>This fork publishes <code>master</code> and <code>master-pg</code>, rebuilt from every commit on the
+default branch. It does not publish <code>latest</code>, <code>beta</code> or version tags: those come
+from the release workflow, and no release has been cut.</p>
+<p><strong>These images are <code>linux/amd64</code> only.</strong> They will not run on a Raspberry Pi, an
+arm64 server, or Apple Silicon. Multi-arch images come from the release
+workflow, so on arm64 hardware you need to build locally
+(<code>docker build -t mydia .</code>) or cut a release.</p>
 <table>
 <thead>
 <tr>
 <th style="text-align: center;">Architecture</th>
-<th style="text-align: center;">Released images</th>
+<th style="text-align: center;">Images</th>
 </tr>
 </thead>
 <tbody>
@@ -3031,7 +3036,7 @@ right build for your machine, so you should not need to name an architecture.</p
 </tr>
 <tr>
 <td style="text-align: center;">arm64 (Apple Silicon, Raspberry Pi 4/5)</td>
-<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">No, build locally</td>
 </tr>
 </tbody>
 </table>
@@ -3073,7 +3078,7 @@ Pre-releases publish <code>beta</code> and <code>beta-pg</code> instead of movin
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="c1"># MYDIA - Media Management</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="c1"># =============================================================================</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">mydia</span><span class="p">:</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/getmydia/mydia:latest</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ghcr.io/kawaii-not-kawaii/mydia:master</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="nt">container_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mydia</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">      </span><span class="c1"># --- Required Secrets (generate with: openssl rand -base64 48) ---</span>
@@ -3183,7 +3188,7 @@ Pre-releases publish <code>beta</code> and <code>beta-pg</code> instead of movin
 <a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/mydia/config:/config<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/your/media:/media<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">  </span>--restart<span class="w"> </span>unless-stopped<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span>ghcr.io/getmydia/mydia:latest
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span>ghcr.io/kawaii-not-kawaii/mydia:master
 </code></pre></div>
 <h2 id="volume-mappings">Volume Mappings</h2>
 <table>
