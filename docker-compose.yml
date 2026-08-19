@@ -31,10 +31,9 @@ services:
       #   PHX_CHECK_ORIGIN=//tower,//tower.tailnet.ts.net,//100.101.102.103
       # `false` disables the check entirely: acceptable on a private tailnet,
       # not on anything internet-facing.
-      # Left unset deliberately: an empty value is not the same as absent
-      # here. Absent means "allow PHX_HOST"; an empty string parses to an empty
-      # allowlist, which rejects every origin including the right one.
-      PHX_CHECK_ORIGIN:
+      # Quote the value. `PHX_CHECK_ORIGIN: false` unquoted is YAML's boolean,
+      # which Compose passes as an empty string rather than "false".
+      PHX_CHECK_ORIGIN: "${PHX_CHECK_ORIGIN:-}"
 
       # Must match the owner of ./config and your media, or imports fail on
       # permissions rather than on anything interesting.

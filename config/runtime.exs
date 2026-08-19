@@ -122,11 +122,23 @@ if config_env() == :prod do
   # - Set PHX_CHECK_ORIGIN=false to disable origin checking (useful for Docker deployments with varying IPs)
   # - Set PHX_CHECK_ORIGIN=https://example.com,https://other.com for specific allowed origins
   # - If not set, defaults to allowing the configured PHX_HOST with any scheme
+  # An unset value and an empty one both mean "just allow PHX_HOST". They are
+  # separated here because `PHX_CHECK_ORIGIN: false` in a compose file is YAML's
+  # boolean, which Docker Compose passes as an empty string, not "false". That
+  # used to split into an empty allowlist, which rejects every origin including
+  # the correct one, and surfaces only as LiveView reconnecting forever.
   check_origin =
-    case System.get_env("PHX_CHECK_ORIGIN") do
-      "false" -> false
-      nil -> ["//#{host}"]
-      origins -> String.split(origins, ",", trim: true)
+    case System.get_env("PHX_CHECK_ORIGIN") |> to_string() |> String.trim() do
+      "false" ->
+        false
+
+      origins ->
+        # An empty list would reject every origin, so anything that parses to
+        # nothing falls back to the host instead.
+        case String.split(origins, ",", trim: true) do
+          [] -> ["//#{host}"]
+          parsed -> parsed
+        end
     end
 
   # Configure IP binding - defaults to IPv4 for Docker compatibility
