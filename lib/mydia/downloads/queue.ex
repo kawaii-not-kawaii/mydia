@@ -1110,6 +1110,38 @@ defmodule Mydia.Downloads.Queue do
   # search result's resolved download_type. When download_type is nil (we
   # couldn't sniff it from the payload), every client is eligible — the
   # adapter's `add_torrent/3` will reject mismatched payloads.
+  @doc """
+  Protocols that at least one enabled download client can actually accept.
+
+  Returns `:any` when no client is enabled, so callers stay permissive rather
+  than filtering every result away on a fresh install.
+  """
+  @spec configured_protocols() :: [atom()] | :any
+  def configured_protocols do
+    enabled = Enum.filter(Settings.list_download_client_configs(), & &1.enabled)
+
+    case enabled do
+      [] ->
+        :any
+
+      clients ->
+        clients
+        |> Enum.flat_map(fn client ->
+          case Registry.get_adapter(client.type) do
+            {:ok, adapter} ->
+              if Code.ensure_loaded?(adapter) and
+                   function_exported?(adapter, :supported_protocols, 0),
+                 do: adapter.supported_protocols(),
+                 else: []
+
+            {:error, _} ->
+              []
+          end
+        end)
+        |> Enum.uniq()
+    end
+  end
+
   def supports_download_type?(_client, nil), do: true
 
   def supports_download_type?(client, download_type) do
